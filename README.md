@@ -1,6 +1,6 @@
 # Illinois Bridge Structure Number Maps
 
-Search Illinois bridge structure numbers (FHWA NBI) and navigate to them in Google Maps.
+Search Illinois bridge structure numbers (IDOT `CCC-NNNN`, full IDOT inventory) and navigate to them in Google Maps.
 
 ## Live site (phone / PWA)
 
@@ -12,4 +12,11 @@ On your phone: open that URL → Add to Home Screen. **Navigate** hands off to t
 
 Load unpacked from `extension/` if present in a fuller release zip, or use the standalone site under `docs/`.
 
-Data: FHWA NBI 2025 Illinois inventory (~26,927 bridges).
+## Data
+
+- **Primary:** IDOT GIST2 statewide structures (`STR2025` in [all2025.zip](https://apps1.dot.illinois.gov/gist2/gisdata/all2025.zip))
+- **Supplement:** FHWA NBI Illinois ASCII (NBI-only SNs merged; IDOT wins on overlap)
+- County codes are **IDOT INV_CO** (White = `097`, Cook = `016`)
+- Rebuild: `python3 scripts/build-data-idot.py` (needs `pyshp`)
+
+See the project README in the fuller addon package for pipeline details.
