@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3d91" />
+  <meta name="color-scheme" content="light" />
+  <meta name="description" content="Look up Illinois NBI/IDOT bridge structure numbers and navigate to them in Google Maps." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="IL Bridges" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>IL Bridge Maps</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">IL</div>
+        <div class="brand-text">
+          <h1>IL Bridge Maps</h1>
+          <p>Search NBI / IDOT structure numbers</p>
+        </div>
+        <button type="button" id="install-toggle" class="ghost-btn" aria-expanded="false" aria-controls="install-help">
+          Install
+        </button>
+      </header>
+
+      <div id="install-help" class="install-help" hidden>
+        <strong>Add to Home Screen</strong> for one-tap field use.
+        <ul>
+          <li><b>iPhone / iPad:</b> Safari → Share → <em>Add to Home Screen</em>. (Safari only — Chrome on iOS cannot install.)</li>
+          <li><b>Android:</b> Chrome menu ⋮ → <em>Install app</em> or <em>Add to Home screen</em>.</li>
+        </ul>
+        <p class="install-note">Needs http:// on your LAN or https:// on the public web. <code>file://</code> will not load the inventory or install.</p>
+        <div class="install-actions">
+          <button type="button" id="install-prompt-btn" class="btn primary" hidden>Install app</button>
+          <button type="button" id="install-dismiss" class="btn secondary">Got it</button>
+        </div>
+      </div>
+
+      <div class="search-sticky">
+        <label class="search-label" for="q">Structure number</label>
+        <div class="search-wrap">
+          <input id="q" type="text" placeholder="e.g. 016-0001 or 0160001"
+            inputmode="text" enterkeyhint="search"
+            autocomplete="off" autocorrect="off" autocapitalize="characters"
+            spellcheck="false" role="combobox" aria-autocomplete="list"
+            aria-controls="suggest" aria-expanded="false" />
+          <div id="suggest" role="listbox"></div>
+        </div>
+        <div class="hint">Dashes and leading zeros optional. Prefix search supported.</div>
+      </div>
+
+      <div id="offline-banner" class="offline-banner" hidden>
+        Offline — using cached inventory. Map tiles need a connection; Navigate still opens Google Maps.
+      </div>
+      <div id="status" class="status">Loading Illinois bridge inventory…</div>
+      <div id="result"></div>
+
+      <div class="meta-foot" id="footer">
+        Data: FHWA National Bridge Inventory (Illinois). Map: © OpenStreetMap contributors.
+      </div>
+    </aside>
+    <main id="map" aria-label="Map"></main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="lib/bridge-search.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
