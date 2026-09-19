@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v10";
+  const APP_BUILD = "v11";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -483,13 +483,16 @@
   function saveDraftList() {
     if (!state.draft) return;
     const titleInput = $("#list-modal-title");
-    const name = String(titleInput.value || "").trim().slice(0, 48);
+    let name = String(titleInput.value || "").trim().slice(0, 48);
     if (!name) {
-      setModalNote("Title can’t be empty.");
-      titleInput.focus();
-      return;
+      name = state.draft.sns.length
+        ? "List (" + state.draft.sns.length + " SN" + (state.draft.sns.length === 1 ? "" : "s") + ")"
+        : "Untitled list";
+      titleInput.value = name;
+      setModalNote("Saved as “" + name + "”. You can Edit to rename.");
     }
     state.draft.name = name;
+    let savedId = state.draft.id;
     if (state.draft.id) {
       const existing = findList(state.draft.id);
       if (existing) {
@@ -502,7 +505,6 @@
           sns: state.draft.sns.slice(),
         });
       }
-      state.viewingListId = state.draft.id;
     } else {
       const list = {
         id: newListId(),
@@ -510,11 +512,31 @@
         sns: state.draft.sns.slice(),
       };
       state.dailyLists.push(list);
-      state.viewingListId = list.id;
+      savedId = list.id;
     }
+    // Return to main Lists screen so the saved name is visible.
+    state.viewingListId = null;
     saveDailyStore();
     closeListModal();
+    // Ensure Lists panel is open
+    const panel = $("#daily-list");
+    const toggle = $("#daily-toggle");
+    if (panel && !panel.classList.contains("open")) {
+      panel.classList.add("open");
+      if (toggle) toggle.setAttribute("aria-expanded", "true");
+      try {
+        localStorage.setItem(DAILY_OPEN_KEY, "1");
+      } catch (_) {}
+    }
     renderListsUI();
+    const note = $("#lists-save-toast");
+    if (note) {
+      note.hidden = false;
+      note.textContent = "Saved “" + name + "”.";
+      setTimeout(() => {
+        note.hidden = true;
+      }, 2500);
+    }
   }
 
   function deleteDraftList() {
@@ -725,8 +747,8 @@
         el.addEventListener("click", () => closeListModal());
       });
     }
-    if (saveBtn) saveBtn.addEventListener("click", () => saveDraftList());
-    if (deleteBtn) deleteBtn.addEventListener("click", () => deleteDraftList());
+    bindPm(saveBtn, saveDraftList);
+    bindPm(deleteBtn, deleteDraftList);
     // Use pointerup as primary on mobile; guard against double-firing with click.
     function bindPm(btn, fn) {
       if (!btn) return;
@@ -1086,7 +1108,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v10")
+        .register("./sw.js?v=v11")
         .then((reg) => {
           try {
             reg.update();
