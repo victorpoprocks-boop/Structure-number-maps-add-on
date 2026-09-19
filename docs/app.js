@@ -724,15 +724,27 @@
     }
     if (saveBtn) saveBtn.addEventListener("click", () => saveDraftList());
     if (deleteBtn) deleteBtn.addEventListener("click", () => deleteDraftList());
-    // Keep SN entry focused when tapping +/− (avoids keyboard dismiss on mobile).
-    // mousedown preventDefault stops the button from taking focus; do not
-    // preventDefault on touch pointerdown or the click may never fire.
-    [addBtn, removeBtn].forEach((btn) => {
+    // Use pointerup as primary on mobile; guard against double-firing with click.
+    function bindPm(btn, fn) {
       if (!btn) return;
-      btn.addEventListener("mousedown", (e) => e.preventDefault());
-    });
-    if (addBtn) addBtn.addEventListener("click", () => draftAddSn());
-    if (removeBtn) removeBtn.addEventListener("click", () => draftRemoveSn());
+      let last = 0;
+      const run = () => {
+        const now = Date.now();
+        if (now - last < 400) return;
+        last = now;
+        fn();
+      };
+      btn.addEventListener("pointerup", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        run();
+      });
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        run();
+      });
+    }
+    bindPm(addBtn, draftAddSn);
+    bindPm(removeBtn, draftRemoveSn);
 
     if (snInput) {
       snInput.addEventListener("keydown", (e) => {
@@ -1111,31 +1123,18 @@
       setStatus("Building search index…");
       await new Promise((r) => setTimeout(r, 0));
       state.search = window.ILBridgeSearch.createSearchIndex(data);
-      // Re-resolve saved list SNs to canonical forms; drop unknowns quietly
-      let dropped = 0;
+      // Re-resolve saved list SNs to canonical forms when known; keep unknowns.
       for (const list of state.dailyLists) {
         const resolved = [];
         for (const sn of list.sns) {
           const hit = state.search.lookupExact(sn);
-          if (hit) {
-            if (!resolved.includes(hit.sn)) resolved.push(hit.sn);
-          } else {
-            dropped += 1;
-          }
+          const out = hit ? hit.sn : sn;
+          if (!resolved.includes(out)) resolved.push(out);
         }
         list.sns = resolved;
       }
       saveDailyStore();
       renderDailyList();
-      if (dropped) {
-        console.info(
-          "Removed " +
-            dropped +
-            " unknown SN" +
-            (dropped === 1 ? "" : "s") +
-            " from saved lists."
-        );
-      }
       $("#footer").innerHTML =
         "<strong>" +
         state.search.count.toLocaleString() +
@@ -1173,5 +1172,9 @@
     }
   }
 
-  init();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => init());
+  } else {
+    init();
+  }
 })();
