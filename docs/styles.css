@@ -763,3 +763,14 @@ body.standalone .install-help { display: none !important; }
 @media (min-width: 860px) {
   .list-create-btn { width: auto; align-self: flex-start; min-width: 160px; }
 }
+
+.app-version {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e8eef8;
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

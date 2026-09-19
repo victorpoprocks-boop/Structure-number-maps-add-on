@@ -5,7 +5,7 @@
  */
 "use strict";
 
-const VERSION = "il-bridge-v9";
+const VERSION = "il-bridge-v10";
 const SHELL = VERSION + "-shell";
 const DATA = VERSION + "-data";
 const TILES = VERSION + "-tiles";
@@ -14,9 +14,9 @@ const TILE_MAX = 250;
 const SHELL_URLS = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./lib/bridge-search.js",
+  "./styles.css?v=v10",
+  "./app.js?v=v10",
+  "./lib/bridge-search.js?v=v10",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=v10" />
 </head>
 <body>
   <div class="app">
@@ -69,6 +69,7 @@
         <div class="daily-list-head">
           <button type="button" id="daily-toggle" class="daily-toggle" aria-expanded="true" aria-controls="daily-list-body">
             <span id="daily-list-heading">Lists</span>
+            <span id="app-version" class="app-version" title="App build">v10</span>
             <span id="daily-count" class="daily-count" aria-live="polite">0</span>
           </button>
         </div>
@@ -137,7 +138,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="lib/bridge-search.js"></script>
-  <script src="app.js"></script>
+  <script src="lib/bridge-search.js?v=v10"></script>
+  <script src="app.js?v=v10"></script>
 </body>
 </html>

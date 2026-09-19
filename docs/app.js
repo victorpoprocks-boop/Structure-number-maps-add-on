@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  const APP_BUILD = "v10";
+  const APP_BUILD_KEY = "ilb-app-build";
+
   const $ = (sel) => document.querySelector(sel);
   const DEBOUNCE_MS = 140;
   const HELP_KEY = "ilb-a2hs-dismissed";
@@ -1049,12 +1052,49 @@
     });
   }
 
+
+  async function forceFreshBuildIfNeeded() {
+    let prev = null;
+    try {
+      prev = localStorage.getItem(APP_BUILD_KEY);
+    } catch (_) {}
+    const verEl = document.getElementById("app-version");
+    if (verEl) verEl.textContent = APP_BUILD;
+    if (prev === APP_BUILD) return false;
+    try {
+      localStorage.setItem(APP_BUILD_KEY, APP_BUILD);
+    } catch (_) {}
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (err) {
+      console.warn("cache clear failed", err);
+    }
+    const url = new URL(location.href);
+    url.searchParams.set("v", APP_BUILD);
+    location.replace(url.toString());
+    return true;
+  }
+
   function registerWorker() {
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch((err) => {
-        console.warn("SW register failed", err);
-      });
+      navigator.serviceWorker
+        .register("./sw.js?v=v10")
+        .then((reg) => {
+          try {
+            reg.update();
+          } catch (_) {}
+        })
+        .catch((err) => {
+          console.warn("SW register failed", err);
+        });
     });
   }
 
@@ -1068,6 +1108,7 @@
   }
 
   async function init() {
+    if (await forceFreshBuildIfNeeded()) return;
     bindInstallHelp();
     bindDailyList();
     registerWorker();
