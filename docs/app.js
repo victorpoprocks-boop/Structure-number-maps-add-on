@@ -4,6 +4,8 @@
   const $ = (sel) => document.querySelector(sel);
   const DEBOUNCE_MS = 140;
   const HELP_KEY = "ilb-a2hs-dismissed";
+  const DAILY_KEY = "ilb-daily-list";
+  const DAILY_OPEN_KEY = "ilb-daily-list-open";
 
   const state = {
     search: null,
@@ -12,6 +14,8 @@
     markers: null,
     debounce: 0,
     deferredInstall: null,
+    dailyList: [],
+    selectedSn: null,
   };
 
   const pinIcon = L.divIcon({
@@ -174,6 +178,246 @@
     }
   }
 
+
+  function loadDailyList() {
+    try {
+      const raw = localStorage.getItem(DAILY_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((x) => (typeof x === "string" ? x : x && x.sn))
+        .filter((s) => typeof s === "string" && s.trim())
+        .map((s) => s.trim());
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveDailyList() {
+    try {
+      localStorage.setItem(DAILY_KEY, JSON.stringify(state.dailyList));
+    } catch (_) {
+      /* ignore quota / private mode */
+    }
+  }
+
+  function shortLabel(bridge) {
+    if (!bridge) return "";
+    const carried = bridge.carried || "—";
+    const crossed = bridge.crossed || "—";
+    return carried + " over " + crossed;
+  }
+
+  function setDailyNote(msg) {
+    const el = $("#daily-note");
+    if (!msg) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.textContent = msg;
+  }
+
+  function addSnsToDaily(rawText) {
+    if (!state.search) return;
+    const lines = String(rawText || "")
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!lines.length) {
+      setDailyNote("Type or paste at least one structure number.");
+      return;
+    }
+    const added = [];
+    const skipped = [];
+    const already = [];
+    for (const line of lines) {
+      const hit = state.search.lookupExact(line);
+      if (!hit) {
+        skipped.push(line);
+        continue;
+      }
+      if (state.dailyList.includes(hit.sn)) {
+        already.push(hit.sn);
+        continue;
+      }
+      state.dailyList.push(hit.sn);
+      added.push(hit.sn);
+    }
+    saveDailyList();
+    renderDailyList();
+    const bits = [];
+    if (added.length) bits.push("Added " + added.length + ".");
+    if (already.length) bits.push(already.length + " already on list.");
+    if (skipped.length) {
+      bits.push(
+        "Skipped " +
+          skipped.length +
+          " unknown: " +
+          skipped.slice(0, 4).join(", ") +
+          (skipped.length > 4 ? "…" : "")
+      );
+    }
+    setDailyNote(bits.join(" ") || null);
+    return { added, skipped, already };
+  }
+
+  function removeFromDaily(sn) {
+    state.dailyList = state.dailyList.filter((x) => x !== sn);
+    saveDailyList();
+    renderDailyList();
+  }
+
+  function clearDailyList() {
+    if (!state.dailyList.length) return;
+    if (!confirm("Clear the Daily List (" + state.dailyList.length + " items)?")) {
+      return;
+    }
+    state.dailyList = [];
+    saveDailyList();
+    setDailyNote(null);
+    renderDailyList();
+  }
+
+  function moveDaily(sn, dir) {
+    const i = state.dailyList.indexOf(sn);
+    if (i < 0) return;
+    const j = i + dir;
+    if (j < 0 || j >= state.dailyList.length) return;
+    const tmp = state.dailyList[i];
+    state.dailyList[i] = state.dailyList[j];
+    state.dailyList[j] = tmp;
+    saveDailyList();
+    renderDailyList();
+  }
+
+  function renderDailyList() {
+    const list = $("#daily-items");
+    const empty = $("#daily-empty");
+    const count = $("#daily-count");
+    const clearBtn = $("#daily-clear");
+    if (!list || !empty || !count) return;
+
+    count.textContent = String(state.dailyList.length);
+    clearBtn.hidden = state.dailyList.length === 0;
+    empty.hidden = state.dailyList.length > 0;
+
+    if (!state.dailyList.length) {
+      list.innerHTML = "";
+      return;
+    }
+
+    list.innerHTML = state.dailyList
+      .map((sn, i) => {
+        const hit = state.search ? state.search.lookupExact(sn) : null;
+        const bridge = hit ? hit.bridge : null;
+        const label = bridge ? shortLabel(bridge) : "Not in inventory";
+        const active = state.selectedSn === sn ? " active" : "";
+        const dest =
+          bridge && state.search
+            ? state.search.navigateDestination(sn, bridge)
+            : null;
+        const navHref = dest ? mapsDirUrl(dest.lat, dest.lon) : "#";
+        return (
+          '<li class="daily-item' +
+          active +
+          '" data-sn="' +
+          escapeHtml(sn) +
+          '">' +
+          '<div class="daily-item-main">' +
+          '<div class="daily-item-reorder">' +
+          '<button type="button" class="daily-icon-btn" data-daily-up title="Move up"' +
+          (i === 0 ? " disabled" : "") +
+          ">▲</button>" +
+          '<button type="button" class="daily-icon-btn" data-daily-down title="Move down"' +
+          (i === state.dailyList.length - 1 ? " disabled" : "") +
+          ">▼</button>" +
+          "</div>" +
+          '<button type="button" class="daily-item-text" data-daily-select>' +
+          '<div class="daily-item-sn">' +
+          escapeHtml(sn) +
+          '</div><div class="daily-item-label">' +
+          escapeHtml(label) +
+          "</div></button></div>" +
+          '<div class="daily-item-actions">' +
+          (bridge
+            ? '<a class="btn primary tiny" data-daily-nav href="' +
+              navHref +
+              '" target="_blank" rel="noopener">Navigate</a>'
+            : "") +
+          '<button type="button" class="btn secondary tiny" data-daily-select>Show</button>' +
+          '<button type="button" class="btn tiny danger" data-daily-remove title="Remove">✕</button>' +
+          "</div></li>"
+        );
+      })
+      .join("");
+
+    list.querySelectorAll(".daily-item").forEach((row) => {
+      const sn = row.getAttribute("data-sn");
+      row.querySelectorAll("[data-daily-select]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const hit = state.search.lookupExact(sn);
+          if (hit) select(hit.sn, hit.bridge);
+          else setDailyNote("“" + sn + "” is not in the inventory.");
+        });
+      });
+      const up = row.querySelector("[data-daily-up]");
+      if (up) up.addEventListener("click", () => moveDaily(sn, -1));
+      const down = row.querySelector("[data-daily-down]");
+      if (down) down.addEventListener("click", () => moveDaily(sn, 1));
+      const rm = row.querySelector("[data-daily-remove]");
+      if (rm) rm.addEventListener("click", () => removeFromDaily(sn));
+    });
+  }
+
+  function bindDailyList() {
+    const panel = $("#daily-list");
+    const toggle = $("#daily-toggle");
+    const body = $("#daily-list-body");
+    const addBtn = $("#daily-add-btn");
+    const addInput = $("#daily-add");
+    const clearBtn = $("#daily-clear");
+
+    let open = true;
+    try {
+      const stored = localStorage.getItem(DAILY_OPEN_KEY);
+      if (stored === "0") open = false;
+      if (stored === "1") open = true;
+    } catch (_) {
+      /* ignore */
+    }
+    panel.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+
+    toggle.addEventListener("click", () => {
+      open = !panel.classList.contains("open");
+      panel.classList.toggle("open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      try {
+        localStorage.setItem(DAILY_OPEN_KEY, open ? "1" : "0");
+      } catch (_) {
+        /* ignore */
+      }
+    });
+
+    addBtn.addEventListener("click", () => {
+      const result = addSnsToDaily(addInput.value);
+      if (result && result.added.length) addInput.value = "";
+    });
+    addInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        addBtn.click();
+      }
+    });
+    clearBtn.addEventListener("click", () => clearDailyList());
+
+    state.dailyList = loadDailyList();
+    // Re-canonicalize against inventory once search is ready (done in init)
+  }
+
   function renderResult(sn, bridge) {
     const host = $("#result");
     if (!bridge) {
@@ -258,6 +502,7 @@
       '<a class="btn secondary" href="' +
       focus +
       '" target="_blank" rel="noopener">Open in Maps</a>' +
+      '<button type="button" class="btn secondary tiny" data-add-daily>Add to Daily List</button>' +
       "</div></article>";
 
     const twinBtn = host.querySelector("[data-twin-sn]");
@@ -266,6 +511,25 @@
         const tsn = twinBtn.getAttribute("data-twin-sn");
         const hit = state.search.lookupExact(tsn);
         if (hit) select(hit.sn, hit.bridge);
+      });
+    }
+
+    const addDailyBtn = host.querySelector("[data-add-daily]");
+    if (addDailyBtn) {
+      const onList = state.dailyList.includes(sn);
+      if (onList) {
+        addDailyBtn.textContent = "On Daily List";
+        addDailyBtn.disabled = true;
+      }
+      addDailyBtn.addEventListener("click", () => {
+        addSnsToDaily(sn);
+        addDailyBtn.textContent = "On Daily List";
+        addDailyBtn.disabled = true;
+        const panel = $("#daily-list");
+        if (panel && !panel.classList.contains("open")) {
+          panel.classList.add("open");
+          $("#daily-toggle").setAttribute("aria-expanded", "true");
+        }
       });
     }
 
@@ -313,11 +577,13 @@
   function select(sn, bridge) {
     const input = $("#q");
     input.value = sn;
+    state.selectedSn = sn;
     $("#suggest").classList.remove("open");
     input.setAttribute("aria-expanded", "false");
     input.blur();
     setStatus(null);
     renderResult(sn, bridge);
+    renderDailyList();
     try {
       const url = new URL(location.href);
       url.searchParams.set("sn", sn);
@@ -465,6 +731,7 @@
 
   async function init() {
     bindInstallHelp();
+    bindDailyList();
     registerWorker();
     bindMapResize();
     setOffline(!navigator.onLine);
@@ -518,6 +785,29 @@
       setStatus("Building search index…");
       await new Promise((r) => setTimeout(r, 0));
       state.search = window.ILBridgeSearch.createSearchIndex(data);
+      // Re-resolve saved Daily List SNs to canonical forms; drop unknowns quietly
+      const resolved = [];
+      const dropped = [];
+      for (const sn of state.dailyList) {
+        const hit = state.search.lookupExact(sn);
+        if (hit) {
+          if (!resolved.includes(hit.sn)) resolved.push(hit.sn);
+        } else {
+          dropped.push(sn);
+        }
+      }
+      state.dailyList = resolved;
+      saveDailyList();
+      renderDailyList();
+      if (dropped.length) {
+        setDailyNote(
+          "Removed " +
+            dropped.length +
+            " unknown SN" +
+            (dropped.length === 1 ? "" : "s") +
+            " from Daily List."
+        );
+      }
       $("#footer").innerHTML =
         "<strong>" +
         state.search.count.toLocaleString() +

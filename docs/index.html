@@ -65,6 +65,27 @@
       <div id="status" class="status">Loading Illinois bridge inventory…</div>
       <div id="result"></div>
 
+      <section class="daily-list open" id="daily-list" aria-labelledby="daily-list-heading">
+        <div class="daily-list-head">
+          <button type="button" id="daily-toggle" class="daily-toggle" aria-expanded="true" aria-controls="daily-list-body">
+            <span id="daily-list-heading">Daily List</span>
+            <span id="daily-count" class="daily-count" aria-live="polite">0</span>
+          </button>
+          <button type="button" id="daily-clear" class="ghost-btn daily-clear" title="Clear daily list" hidden>Clear</button>
+        </div>
+        <div id="daily-list-body" class="daily-list-body">
+          <label class="search-label" for="daily-add">Add structure numbers</label>
+          <textarea id="daily-add" rows="2" placeholder="Paste SNs, one per line&#10;e.g. 016-0001"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></textarea>
+          <div class="daily-add-row">
+            <button type="button" id="daily-add-btn" class="btn secondary daily-add-btn">Add to list</button>
+          </div>
+          <div id="daily-note" class="daily-note" hidden></div>
+          <ul id="daily-items" class="daily-items" aria-label="Daily structure list"></ul>
+          <p id="daily-empty" class="daily-empty">No structures yet — add from a search result or paste above.</p>
+        </div>
+      </section>
+
       <div class="meta-foot" id="footer">
         Data: FHWA National Bridge Inventory (Illinois). Map: © OpenStreetMap contributors.
       </div>
