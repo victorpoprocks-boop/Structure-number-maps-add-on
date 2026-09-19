@@ -847,3 +847,62 @@ body.standalone .install-help { display: none !important; }
   }
   .daily-toggle::before { display: none; }
 }
+
+#map { position: relative; }
+
+.radar-ui {
+  position: absolute;
+  left: 12px;
+  bottom: calc(12px + var(--safe-bottom));
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.radar-ui > * { pointer-events: auto; }
+.radar-toggle,
+.radar-play {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(15, 23, 36, 0.82);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+.radar-toggle.active {
+  background: rgba(11, 61, 145, 0.92);
+}
+.radar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 12px;
+  background: rgba(15, 23, 36, 0.82);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+.radar-play {
+  min-width: 48px;
+  padding: 0;
+  font-size: 16px;
+  background: rgba(255,255,255,0.12);
+}
+.radar-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 4.5em;
+}
+.radar-status {
+  font-size: 11px;
+  opacity: 0.8;
+}
+#map { position: relative; }

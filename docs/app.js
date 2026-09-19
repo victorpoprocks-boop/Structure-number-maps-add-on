@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v16";
+  const APP_BUILD = "v17";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -49,6 +49,128 @@
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+
+  // RainViewer animated radar (public tiles) — optional overlay with play/pause.
+  const radarState = {
+    host: "https://tilecache.rainviewer.com",
+    frames: [],
+    idx: 0,
+    layer: null,
+    timer: null,
+    playing: false,
+    opacity: 0.65,
+  };
+
+  function radarTileUrl(framePath) {
+    // color scheme 2, smooth 1, snow 1 — RainViewer path format
+    return (
+      radarState.host +
+      framePath +
+      "/256/{z}/{x}/{y}/2/1_1.png"
+    );
+  }
+
+  function setRadarFrame(i) {
+    if (!radarState.frames.length) return;
+    radarState.idx = ((i % radarState.frames.length) + radarState.frames.length) % radarState.frames.length;
+    const frame = radarState.frames[radarState.idx];
+    const url = radarTileUrl(frame.path);
+    if (radarState.layer) {
+      map.removeLayer(radarState.layer);
+      radarState.layer = null;
+    }
+    radarState.layer = L.tileLayer(url, {
+      opacity: radarState.opacity,
+      zIndex: 300,
+      attribution: '<a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>',
+    }).addTo(map);
+    const label = $("#radar-time");
+    if (label) {
+      const d = new Date(frame.time * 1000);
+      label.textContent = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+  }
+
+  function stopRadar() {
+    radarState.playing = false;
+    if (radarState.timer) {
+      clearInterval(radarState.timer);
+      radarState.timer = null;
+    }
+    const btn = $("#radar-play");
+    if (btn) {
+      btn.textContent = "▶";
+      btn.setAttribute("aria-label", "Play radar");
+      btn.title = "Play radar";
+    }
+  }
+
+  function playRadar() {
+    if (radarState.frames.length < 2) return;
+    radarState.playing = true;
+    const btn = $("#radar-play");
+    if (btn) {
+      btn.textContent = "❚❚";
+      btn.setAttribute("aria-label", "Pause radar");
+      btn.title = "Pause radar";
+    }
+    if (radarState.timer) clearInterval(radarState.timer);
+    radarState.timer = setInterval(() => {
+      setRadarFrame(radarState.idx + 1);
+    }, 500);
+  }
+
+  async function loadRadarFrames() {
+    const status = $("#radar-status");
+    try {
+      const res = await fetch("https://api.rainviewer.com/public/weather-maps.json", {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("radar " + res.status);
+      const data = await res.json();
+      radarState.host = data.host || radarState.host;
+      const past = (data.radar && data.radar.past) || [];
+      const nowcast = (data.radar && data.radar.nowcast) || [];
+      radarState.frames = past.concat(nowcast);
+      if (!radarState.frames.length) throw new Error("no frames");
+      setRadarFrame(radarState.frames.length - 1);
+      if (status) status.textContent = "Radar ready";
+    } catch (err) {
+      console.warn("radar load failed", err);
+      if (status) status.textContent = "Radar unavailable";
+    }
+  }
+
+  function bindRadarControls() {
+    const play = $("#radar-play");
+    const toggle = $("#radar-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        const on = toggle.getAttribute("aria-pressed") !== "true";
+        toggle.setAttribute("aria-pressed", on ? "true" : "false");
+        toggle.classList.toggle("active", on);
+        const controls = $("#radar-controls");
+        if (controls) controls.hidden = !on;
+        if (on) {
+          if (!radarState.frames.length) loadRadarFrames();
+          else setRadarFrame(radarState.idx);
+        } else {
+          stopRadar();
+          if (radarState.layer) {
+            map.removeLayer(radarState.layer);
+            radarState.layer = null;
+          }
+        }
+      });
+    }
+    if (play) {
+      play.addEventListener("click", () => {
+        if (!radarState.frames.length) return;
+        if (radarState.playing) stopRadar();
+        else playRadar();
+      });
+    }
+  }
 
   function isStandalone() {
     return (
@@ -1309,7 +1431,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v16")
+        .register("./sw.js?v=v17")
         .then((reg) => {
           try {
             reg.update();
