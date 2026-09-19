@@ -71,26 +71,25 @@
             <span id="daily-list-heading">Lists</span>
             <span id="daily-count" class="daily-count" aria-live="polite">0</span>
           </button>
-          <button type="button" id="daily-clear" class="ghost-btn daily-clear" title="Clear active list" hidden>Clear</button>
         </div>
         <div id="daily-list-body" class="daily-list-body">
-          <div class="daily-lists-bar">
-            <div id="daily-tabs" class="daily-tabs" role="tablist" aria-label="Saved lists"></div>
-            <div class="daily-lists-actions">
-              <button type="button" id="daily-new-list" class="btn secondary tiny" title="Create a new named list">+ New</button>
-              <button type="button" id="daily-rename-list" class="ghost-btn daily-manage-btn" title="Rename active list">Rename</button>
-              <button type="button" id="daily-delete-list" class="ghost-btn daily-manage-btn danger-text" title="Delete active list">Delete</button>
+          <div id="lists-home" class="lists-home">
+            <button type="button" id="list-create-btn" class="btn primary list-create-btn">Create list</button>
+            <ul id="saved-lists" class="saved-lists" aria-label="Saved lists"></ul>
+            <p id="lists-empty" class="daily-empty">No lists yet — tap <strong>Create list</strong> to start.</p>
+          </div>
+          <div id="list-detail" class="list-detail" hidden>
+            <div class="list-detail-bar">
+              <button type="button" id="list-back-btn" class="ghost-btn list-back-btn" title="Back to lists">← Back</button>
+              <div class="list-detail-title-wrap">
+                <h3 id="list-detail-title" class="list-detail-title">List</h3>
+                <span id="list-detail-count" class="daily-count">0</span>
+              </div>
+              <button type="button" id="list-edit-btn" class="btn secondary tiny">Edit</button>
             </div>
+            <ul id="list-detail-items" class="daily-items" aria-label="Structure numbers in this list"></ul>
+            <p id="list-detail-empty" class="daily-empty">This list has no structure numbers yet. Tap <strong>Edit</strong> to add some.</p>
           </div>
-          <label class="search-label" for="daily-add">Add structure numbers</label>
-          <textarea id="daily-add" rows="2" placeholder="Paste SNs — one per line (e.g. 016-0001)"
-            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></textarea>
-          <div class="daily-add-row">
-            <button type="button" id="daily-add-btn" class="btn secondary daily-add-btn">Add to list</button>
-          </div>
-          <div id="daily-note" class="daily-note" hidden></div>
-          <ul id="daily-items" class="daily-items" aria-label="Active list structure numbers"></ul>
-          <p id="daily-empty" class="daily-empty">No structures yet — add from a search result or paste above. Tap an SN to search it.</p>
         </div>
       </section>
 
@@ -105,5 +104,38 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="lib/bridge-search.js"></script>
   <script src="app.js"></script>
+
+  <div id="list-modal" class="list-modal" hidden>
+    <div class="list-modal-backdrop" data-list-modal-dismiss></div>
+    <div class="list-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="list-modal-heading">
+      <header class="list-modal-head">
+        <h2 id="list-modal-heading">Create list</h2>
+        <button type="button" id="list-modal-close" class="ghost-btn list-modal-close" aria-label="Close" data-list-modal-dismiss>✕</button>
+      </header>
+      <div class="list-modal-body">
+        <label class="search-label" for="list-modal-title">Title</label>
+        <input id="list-modal-title" type="text" maxlength="48" placeholder="e.g. Monday routes"
+          autocomplete="off" autocorrect="off" spellcheck="false" />
+
+        <label class="search-label" for="list-modal-sn">Structure number</label>
+        <div class="list-modal-sn-row">
+          <input id="list-modal-sn" type="text" placeholder="e.g. 016-0001"
+            inputmode="text" enterkeyhint="done"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+          <button type="button" id="list-modal-add" class="btn primary list-modal-pm" title="Add structure number" aria-label="Add structure number">+</button>
+          <button type="button" id="list-modal-remove" class="btn secondary list-modal-pm" title="Remove structure number" aria-label="Remove structure number">−</button>
+        </div>
+        <div id="list-modal-note" class="daily-note" hidden></div>
+        <p class="list-modal-draft-label">Structures in this list</p>
+        <ul id="list-modal-draft" class="list-modal-draft" aria-label="Draft structure numbers"></ul>
+        <p id="list-modal-draft-empty" class="daily-empty">No structure numbers yet — enter an SN and tap +.</p>
+      </div>
+      <div class="list-modal-actions">
+        <button type="button" id="list-modal-save" class="btn primary">Save list</button>
+        <button type="button" id="list-modal-delete" class="btn danger-outline">Delete list</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

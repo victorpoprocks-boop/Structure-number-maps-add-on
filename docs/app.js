@@ -16,8 +16,9 @@
     debounce: 0,
     deferredInstall: null,
     dailyLists: [],
-    activeListId: null,
+    viewingListId: null,
     selectedSn: null,
+    draft: null,
   };
 
   const pinIcon = L.divIcon({
@@ -225,36 +226,38 @@
         : [];
       lists.push({ id, name, sns });
     }
-    if (!lists.length) {
-      const daily = { id: newListId(), name: "Daily", sns: [] };
-      return { lists: [daily], activeId: daily.id };
-    }
-    let activeId =
-      typeof store.activeId === "string" ? store.activeId : lists[0].id;
-    if (!lists.some((l) => l.id === activeId)) activeId = lists[0].id;
-    return { lists, activeId };
+    let viewingId =
+      typeof store.viewingId === "string"
+        ? store.viewingId
+        : typeof store.activeId === "string"
+          ? store.activeId
+          : null;
+    if (viewingId && !lists.some((l) => l.id === viewingId)) viewingId = null;
+    return { lists, viewingId };
   }
 
   function loadDailyStore() {
     try {
       const raw = localStorage.getItem(DAILY_STORE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        return normalizeStore(parsed);
+        return normalizeStore(JSON.parse(raw));
       }
     } catch (_) {
       /* fall through to migration */
     }
     const legacy = loadLegacyDailyList();
+    if (!legacy.length) {
+      return { lists: [], viewingId: null };
+    }
     const daily = { id: newListId(), name: "Daily", sns: legacy };
-    const store = { lists: [daily], activeId: daily.id };
+    const store = { lists: [daily], viewingId: null, activeId: daily.id };
     try {
       localStorage.setItem(DAILY_STORE_KEY, JSON.stringify(store));
-      if (legacy.length) localStorage.removeItem(DAILY_KEY_LEGACY);
+      localStorage.removeItem(DAILY_KEY_LEGACY);
     } catch (_) {
       /* ignore */
     }
-    return store;
+    return { lists: [daily], viewingId: null };
   }
 
   function saveDailyStore() {
@@ -265,7 +268,8 @@
           name: l.name,
           sns: l.sns.slice(),
         })),
-        activeId: state.activeListId,
+        viewingId: state.viewingListId,
+        activeId: state.viewingListId,
       };
       localStorage.setItem(DAILY_STORE_KEY, JSON.stringify(payload));
     } catch (_) {
@@ -273,17 +277,12 @@
     }
   }
 
-  function activeList() {
-    return (
-      state.dailyLists.find((l) => l.id === state.activeListId) ||
-      state.dailyLists[0] ||
-      null
-    );
+  function findList(id) {
+    return state.dailyLists.find((l) => l.id === id) || null;
   }
 
-  function activeSns() {
-    const list = activeList();
-    return list ? list.sns : [];
+  function viewingList() {
+    return state.viewingListId ? findList(state.viewingListId) : null;
   }
 
   function shortLabel(bridge) {
@@ -293,8 +292,9 @@
     return carried + " over " + crossed;
   }
 
-  function setDailyNote(msg) {
-    const el = $("#daily-note");
+  function setModalNote(msg) {
+    const el = $("#list-modal-note");
+    if (!el) return;
     if (!msg) {
       el.hidden = true;
       el.textContent = "";
@@ -304,309 +304,340 @@
     el.textContent = msg;
   }
 
-  function promptListName(title, initial) {
-    const raw = window.prompt(title, initial || "");
-    if (raw === null) return null;
-    const name = String(raw).trim().slice(0, 48);
-    if (!name) {
-      setDailyNote("List name can’t be empty.");
-      return null;
+  function lockBodyScroll(lock) {
+    document.body.style.overflow = lock ? "hidden" : "";
+  }
+
+  function renderDraftList() {
+    const draftEl = $("#list-modal-draft");
+    const empty = $("#list-modal-draft-empty");
+    if (!draftEl || !empty || !state.draft) return;
+    const sns = state.draft.sns;
+    empty.hidden = sns.length > 0;
+    draftEl.innerHTML = sns
+      .map(
+        (sn) =>
+          '<li class="list-modal-draft-item" data-sn="' +
+          escapeHtml(sn) +
+          '"><span>' +
+          escapeHtml(sn) +
+          '</span><button type="button" data-draft-remove title="Remove" aria-label="Remove ' +
+          escapeHtml(sn) +
+          '">✕</button></li>'
+      )
+      .join("");
+    draftEl.querySelectorAll("[data-draft-remove]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sn = btn.closest("[data-sn]").getAttribute("data-sn");
+        state.draft.sns = state.draft.sns.filter((x) => x !== sn);
+        setModalNote("Removed " + sn + ".");
+        renderDraftList();
+      });
+    });
+  }
+
+  function openListModal(listOrNull) {
+    const modal = $("#list-modal");
+    const heading = $("#list-modal-heading");
+    const titleInput = $("#list-modal-title");
+    const snInput = $("#list-modal-sn");
+    if (!modal || !titleInput) return;
+
+    if (listOrNull) {
+      state.draft = {
+        id: listOrNull.id,
+        name: listOrNull.name,
+        sns: listOrNull.sns.slice(),
+      };
+      heading.textContent = "Edit list";
+      titleInput.value = listOrNull.name;
+    } else {
+      state.draft = { id: null, name: "", sns: [] };
+      heading.textContent = "Create list";
+      titleInput.value = "";
     }
-    return name;
+    snInput.value = "";
+    setModalNote(null);
+    renderDraftList();
+    modal.hidden = false;
+    lockBodyScroll(true);
+    setTimeout(() => titleInput.focus(), 50);
   }
 
-  function setActiveList(id) {
-    if (!state.dailyLists.some((l) => l.id === id)) return;
-    state.activeListId = id;
+  function closeListModal() {
+    const modal = $("#list-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    state.draft = null;
+    setModalNote(null);
+    lockBodyScroll(false);
+  }
+
+  function draftAddSn() {
+    if (!state.draft) return;
+    if (!state.search) {
+      setModalNote("Inventory still loading — try again in a moment.");
+      return;
+    }
+    const snInput = $("#list-modal-sn");
+    const raw = (snInput.value || "").trim();
+    if (!raw) {
+      setModalNote("Enter a structure number, then tap +.");
+      snInput.focus();
+      return;
+    }
+    const hit = state.search.lookupExact(raw);
+    if (!hit) {
+      setModalNote("“" + raw + "” isn’t in the Illinois inventory.");
+      snInput.focus();
+      snInput.select();
+      return;
+    }
+    if (state.draft.sns.includes(hit.sn)) {
+      setModalNote(hit.sn + " is already on this list.");
+      snInput.value = "";
+      snInput.focus();
+      return;
+    }
+    state.draft.sns.push(hit.sn);
+    snInput.value = "";
+    setModalNote("Added " + hit.sn + ".");
+    renderDraftList();
+    snInput.focus();
+  }
+
+  function draftRemoveSn() {
+    if (!state.draft) return;
+    const snInput = $("#list-modal-sn");
+    const raw = (snInput.value || "").trim();
+    if (!raw) {
+      setModalNote("Enter a structure number to remove, or tap ✕ on a draft item.");
+      snInput.focus();
+      return;
+    }
+    let target = raw;
+    if (state.search) {
+      const hit = state.search.lookupExact(raw);
+      if (hit) target = hit.sn;
+    }
+    const before = state.draft.sns.length;
+    state.draft.sns = state.draft.sns.filter(
+      (sn) => sn !== target && sn.toLowerCase() !== raw.toLowerCase()
+    );
+    if (state.draft.sns.length === before) {
+      setModalNote("“" + raw + "” isn’t on this draft list.");
+      return;
+    }
+    snInput.value = "";
+    setModalNote("Removed " + target + ".");
+    renderDraftList();
+    snInput.focus();
+  }
+
+  function saveDraftList() {
+    if (!state.draft) return;
+    const titleInput = $("#list-modal-title");
+    const name = String(titleInput.value || "").trim().slice(0, 48);
+    if (!name) {
+      setModalNote("Title can’t be empty.");
+      titleInput.focus();
+      return;
+    }
+    state.draft.name = name;
+    if (state.draft.id) {
+      const existing = findList(state.draft.id);
+      if (existing) {
+        existing.name = name;
+        existing.sns = state.draft.sns.slice();
+      } else {
+        state.dailyLists.push({
+          id: state.draft.id,
+          name,
+          sns: state.draft.sns.slice(),
+        });
+      }
+      state.viewingListId = state.draft.id;
+    } else {
+      const list = {
+        id: newListId(),
+        name,
+        sns: state.draft.sns.slice(),
+      };
+      state.dailyLists.push(list);
+      state.viewingListId = list.id;
+    }
     saveDailyStore();
-    setDailyNote(null);
-    renderDailyList();
+    closeListModal();
+    renderListsUI();
   }
 
-  function createNamedList() {
-    const name = promptListName("Name for the new list:", "");
-    if (!name) return;
-    const list = { id: newListId(), name, sns: [] };
-    state.dailyLists.push(list);
-    state.activeListId = list.id;
-    saveDailyStore();
-    setDailyNote("Created “" + name + "”.");
-    renderDailyList();
-  }
-
-  function renameActiveList() {
-    const list = activeList();
-    if (!list) return;
-    const name = promptListName("Rename list:", list.name);
-    if (!name) return;
-    list.name = name;
-    saveDailyStore();
-    setDailyNote("Renamed to “" + name + "”.");
-    renderDailyList();
-  }
-
-  function deleteActiveList() {
-    const list = activeList();
-    if (!list) return;
-    if (state.dailyLists.length <= 1) {
+  function deleteDraftList() {
+    if (!state.draft) return;
+    if (!state.draft.id) {
+      // Unsaved create — just discard
+      closeListModal();
+      return;
+    }
+    const list = findList(state.draft.id);
+    const name = (list && list.name) || state.draft.name || "this list";
+    const count = list ? list.sns.length : state.draft.sns.length;
+    if (count > 0) {
       if (
         !confirm(
-          "This is your only list. Clear all items from “" + list.name + "”?"
+          "Delete list “" +
+            name +
+            "” (" +
+            count +
+            " structure number" +
+            (count === 1 ? "" : "s") +
+            ")?"
         )
       ) {
         return;
       }
-      list.sns = [];
-      list.name = "Daily";
-      saveDailyStore();
-      setDailyNote("List cleared.");
-      renderDailyList();
+    } else if (!confirm("Delete empty list “" + name + "”?")) {
       return;
     }
-    if (
-      !confirm(
-        "Delete list “" +
-          list.name +
-          "” (" +
-          list.sns.length +
-          " item" +
-          (list.sns.length === 1 ? "" : "s") +
-          ")?"
-      )
-    ) {
-      return;
-    }
-    const idx = state.dailyLists.findIndex((l) => l.id === list.id);
-    state.dailyLists.splice(idx, 1);
-    state.activeListId = state.dailyLists[Math.max(0, idx - 1)].id;
+    const id = state.draft.id;
+    state.dailyLists = state.dailyLists.filter((l) => l.id !== id);
+    if (state.viewingListId === id) state.viewingListId = null;
     saveDailyStore();
-    setDailyNote("Deleted “" + list.name + "”.");
-    renderDailyList();
+    closeListModal();
+    renderListsUI();
   }
 
-  function addSnsToDaily(rawText) {
-    if (!state.search) return;
-    const list = activeList();
-    if (!list) return;
-    const lines = String(rawText || "")
-      .split(/[\n,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (!lines.length) {
-      setDailyNote("Type or paste at least one structure number.");
-      return;
-    }
-    const added = [];
-    const skipped = [];
-    const already = [];
-    for (const line of lines) {
-      const hit = state.search.lookupExact(line);
-      if (!hit) {
-        skipped.push(line);
-        continue;
-      }
-      if (list.sns.includes(hit.sn)) {
-        already.push(hit.sn);
-        continue;
-      }
-      list.sns.push(hit.sn);
-      added.push(hit.sn);
-    }
+  function openListDetail(id) {
+    if (!findList(id)) return;
+    state.viewingListId = id;
     saveDailyStore();
-    renderDailyList();
-    const bits = [];
-    if (added.length) bits.push("Added " + added.length + " to “" + list.name + "”.");
-    if (already.length) bits.push(already.length + " already on list.");
-    if (skipped.length) {
-      bits.push(
-        "Skipped " +
-          skipped.length +
-          " unknown: " +
-          skipped.slice(0, 4).join(", ") +
-          (skipped.length > 4 ? "…" : "")
-      );
-    }
-    setDailyNote(bits.join(" ") || null);
-    return { added, skipped, already };
+    renderListsUI();
   }
 
-  function removeFromDaily(sn) {
-    const list = activeList();
-    if (!list) return;
-    list.sns = list.sns.filter((x) => x !== sn);
+  function backToListsHome() {
+    state.viewingListId = null;
     saveDailyStore();
-    renderDailyList();
+    renderListsUI();
   }
 
-  function clearDailyList() {
-    const list = activeList();
-    if (!list || !list.sns.length) return;
-    if (
-      !confirm(
-        "Clear “" + list.name + "” (" + list.sns.length + " items)?"
-      )
-    ) {
-      return;
-    }
-    list.sns = [];
-    saveDailyStore();
-    setDailyNote(null);
-    renderDailyList();
-  }
+  function renderSavedLists() {
+    const ul = $("#saved-lists");
+    const empty = $("#lists-empty");
+    const count = $("#daily-count");
+    if (!ul || !empty || !count) return;
 
-  function moveDaily(sn, dir) {
-    const list = activeList();
-    if (!list) return;
-    const i = list.sns.indexOf(sn);
-    if (i < 0) return;
-    const j = i + dir;
-    if (j < 0 || j >= list.sns.length) return;
-    const tmp = list.sns[i];
-    list.sns[i] = list.sns[j];
-    list.sns[j] = tmp;
-    saveDailyStore();
-    renderDailyList();
-  }
+    count.textContent = String(state.dailyLists.length);
+    count.title =
+      state.dailyLists.length +
+      " saved list" +
+      (state.dailyLists.length === 1 ? "" : "s");
+    empty.hidden = state.dailyLists.length > 0;
 
-  function renderDailyTabs() {
-    const tabs = $("#daily-tabs");
-    if (!tabs) return;
-    tabs.innerHTML = state.dailyLists
+    ul.innerHTML = state.dailyLists
       .map((list) => {
-        const selected = list.id === state.activeListId;
+        const n = list.sns.length;
         return (
-          '<button type="button" role="tab" class="daily-tab" data-list-id="' +
+          '<li><button type="button" class="saved-list-btn" data-open-list="' +
           escapeHtml(list.id) +
-          '" aria-selected="' +
-          (selected ? "true" : "false") +
-          '" title="' +
+          '"><span class="saved-list-name">' +
           escapeHtml(list.name) +
-          '"><span class="daily-tab-name">' +
-          escapeHtml(list.name) +
-          '</span><span class="daily-tab-count">' +
-          list.sns.length +
-          "</span></button>"
+          '</span><span class="saved-list-meta">' +
+          n +
+          " SN" +
+          (n === 1 ? "" : "s") +
+          "</span></button></li>"
         );
       })
       .join("");
-    tabs.querySelectorAll(".daily-tab").forEach((btn) => {
+
+    ul.querySelectorAll("[data-open-list]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        setActiveList(btn.getAttribute("data-list-id"));
+        openListDetail(btn.getAttribute("data-open-list"));
       });
     });
-    const activeBtn = tabs.querySelector('.daily-tab[aria-selected="true"]');
-    if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
-      activeBtn.scrollIntoView({
-        inline: "nearest",
-        block: "nearest",
-        behavior: "smooth",
-      });
-    }
   }
 
-  function renderDailyList() {
-    const listEl = $("#daily-items");
-    const empty = $("#daily-empty");
-    const count = $("#daily-count");
-    const clearBtn = $("#daily-clear");
-    const heading = $("#daily-list-heading");
-    const addBtn = $("#daily-add-btn");
-    if (!listEl || !empty || !count) return;
-
-    const list = activeList();
-    const sns = list ? list.sns : [];
-    const listName = list ? list.name : "List";
-
-    if (heading) heading.textContent = "Lists";
-    count.textContent = String(sns.length);
-    count.title = listName + ": " + sns.length + " item" + (sns.length === 1 ? "" : "s");
-    if (clearBtn) clearBtn.hidden = sns.length === 0;
-    if (addBtn) addBtn.textContent = "Add to “" + listName + "”";
-    empty.hidden = sns.length > 0;
-    empty.textContent =
-      "“" +
-      listName +
-      "” is empty — add from a search result or paste above. Tap an SN to search it.";
-
-    renderDailyTabs();
-
-    if (!sns.length) {
-      listEl.innerHTML = "";
+  function renderListDetail() {
+    const list = viewingList();
+    const title = $("#list-detail-title");
+    const count = $("#list-detail-count");
+    const items = $("#list-detail-items");
+    const empty = $("#list-detail-empty");
+    if (!title || !items || !empty) return;
+    if (!list) {
+      items.innerHTML = "";
       return;
     }
 
-    listEl.innerHTML = sns
-      .map((sn, i) => {
+    title.textContent = list.name;
+    if (count) count.textContent = String(list.sns.length);
+    empty.hidden = list.sns.length > 0;
+
+    items.innerHTML = list.sns
+      .map((sn) => {
         const hit = state.search ? state.search.lookupExact(sn) : null;
         const bridge = hit ? hit.bridge : null;
         const label = bridge ? shortLabel(bridge) : "Not in inventory";
         const active = state.selectedSn === sn ? " active" : "";
-        const dest =
-          bridge && state.search
-            ? state.search.navigateDestination(sn, bridge)
-            : null;
-        const navHref = dest ? mapsDirUrl(dest.lat, dest.lon) : "#";
         return (
-          '<li class="daily-item' +
+          '<li><button type="button" class="daily-item' +
           active +
           '" data-sn="' +
           escapeHtml(sn) +
-          '">' +
-          '<div class="daily-item-main">' +
-          '<div class="daily-item-reorder">' +
-          '<button type="button" class="daily-icon-btn" data-daily-up title="Move up"' +
-          (i === 0 ? " disabled" : "") +
-          ">▲</button>" +
-          '<button type="button" class="daily-icon-btn" data-daily-down title="Move down"' +
-          (i === sns.length - 1 ? " disabled" : "") +
-          ">▼</button>" +
-          "</div>" +
-          '<button type="button" class="daily-item-text" data-daily-select title="Search this structure number">' +
-          '<div class="daily-item-sn">' +
+          '"><div class="daily-item-sn">' +
           escapeHtml(sn) +
           '</div><div class="daily-item-label">' +
           escapeHtml(label) +
-          "</div></button></div>" +
-          '<div class="daily-item-actions">' +
-          (bridge
-            ? '<a class="btn primary tiny" data-daily-nav href="' +
-              navHref +
-              '" target="_blank" rel="noopener">Navigate</a>'
-            : "") +
-          '<button type="button" class="btn secondary tiny" data-daily-select>Search</button>' +
-          '<button type="button" class="btn tiny danger" data-daily-remove title="Remove">✕</button>' +
-          "</div></li>"
+          "</div></button></li>"
         );
       })
       .join("");
 
-    listEl.querySelectorAll(".daily-item").forEach((row) => {
-      const sn = row.getAttribute("data-sn");
-      row.querySelectorAll("[data-daily-select]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const hit = state.search && state.search.lookupExact(sn);
-          if (hit) select(hit.sn, hit.bridge);
-          else setDailyNote("“" + sn + "” is not in the inventory.");
-        });
+    items.querySelectorAll(".daily-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sn = btn.getAttribute("data-sn");
+        const hit = state.search && state.search.lookupExact(sn);
+        if (hit) select(hit.sn, hit.bridge);
+        else setStatus("“" + sn + "” is not in the inventory.", "error");
       });
-      const up = row.querySelector("[data-daily-up]");
-      if (up) up.addEventListener("click", () => moveDaily(sn, -1));
-      const down = row.querySelector("[data-daily-down]");
-      if (down) down.addEventListener("click", () => moveDaily(sn, 1));
-      const rm = row.querySelector("[data-daily-remove]");
-      if (rm) rm.addEventListener("click", () => removeFromDaily(sn));
     });
+  }
+
+  function renderListsUI() {
+    const home = $("#lists-home");
+    const detail = $("#list-detail");
+    if (!home || !detail) return;
+
+    const list = viewingList();
+    if (list) {
+      home.hidden = true;
+      detail.hidden = false;
+      renderListDetail();
+    } else {
+      home.hidden = false;
+      detail.hidden = true;
+      state.viewingListId = null;
+      renderSavedLists();
+    }
+  }
+
+  // Back-compat alias used by select()
+  function renderDailyList() {
+    renderListsUI();
   }
 
   function bindDailyList() {
     const panel = $("#daily-list");
     const toggle = $("#daily-toggle");
-    const addBtn = $("#daily-add-btn");
-    const addInput = $("#daily-add");
-    const clearBtn = $("#daily-clear");
-    const newBtn = $("#daily-new-list");
-    const renameBtn = $("#daily-rename-list");
-    const deleteBtn = $("#daily-delete-list");
+    const createBtn = $("#list-create-btn");
+    const backBtn = $("#list-back-btn");
+    const editBtn = $("#list-edit-btn");
+    const modal = $("#list-modal");
+    const saveBtn = $("#list-modal-save");
+    const deleteBtn = $("#list-modal-delete");
+    const addBtn = $("#list-modal-add");
+    const removeBtn = $("#list-modal-remove");
+    const snInput = $("#list-modal-sn");
+    const titleInput = $("#list-modal-title");
 
     let open = true;
     try {
@@ -630,25 +661,57 @@
       }
     });
 
-    addBtn.addEventListener("click", () => {
-      const result = addSnsToDaily(addInput.value);
-      if (result && result.added.length) addInput.value = "";
-    });
-    addInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    if (createBtn) {
+      createBtn.addEventListener("click", () => openListModal(null));
+    }
+    if (backBtn) {
+      backBtn.addEventListener("click", () => backToListsHome());
+    }
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        const list = viewingList();
+        if (list) openListModal(list);
+      });
+    }
+
+    if (modal) {
+      modal.querySelectorAll("[data-list-modal-dismiss]").forEach((el) => {
+        el.addEventListener("click", () => closeListModal());
+      });
+    }
+    if (saveBtn) saveBtn.addEventListener("click", () => saveDraftList());
+    if (deleteBtn) deleteBtn.addEventListener("click", () => deleteDraftList());
+    if (addBtn) addBtn.addEventListener("click", () => draftAddSn());
+    if (removeBtn) removeBtn.addEventListener("click", () => draftRemoveSn());
+
+    if (snInput) {
+      snInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          draftAddSn();
+        }
+      });
+    }
+    if (titleInput) {
+      titleInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (snInput) snInput.focus();
+        }
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && state.draft) {
         e.preventDefault();
-        addBtn.click();
+        closeListModal();
       }
     });
-    clearBtn.addEventListener("click", () => clearDailyList());
-    if (newBtn) newBtn.addEventListener("click", () => createNamedList());
-    if (renameBtn) renameBtn.addEventListener("click", () => renameActiveList());
-    if (deleteBtn) deleteBtn.addEventListener("click", () => deleteActiveList());
 
     const store = loadDailyStore();
     state.dailyLists = store.lists;
-    state.activeListId = store.activeId;
-    // Re-canonicalize against inventory once search is ready (done in init)
+    state.viewingListId = store.viewingId;
+    renderListsUI();
   }
 
   function renderResult(sn, bridge) {
@@ -735,7 +798,6 @@
       '<a class="btn secondary" href="' +
       focus +
       '" target="_blank" rel="noopener">Open in Maps</a>' +
-      '<button type="button" class="btn secondary tiny" data-add-daily>Add to list</button>' +
       "</div></article>";
 
     const twinBtn = host.querySelector("[data-twin-sn]");
@@ -744,29 +806,6 @@
         const tsn = twinBtn.getAttribute("data-twin-sn");
         const hit = state.search.lookupExact(tsn);
         if (hit) select(hit.sn, hit.bridge);
-      });
-    }
-
-    const addDailyBtn = host.querySelector("[data-add-daily]");
-    if (addDailyBtn) {
-      const list = activeList();
-      const listName = list ? list.name : "list";
-      const onList = list ? list.sns.includes(sn) : false;
-      addDailyBtn.textContent = onList
-        ? "On “" + listName + "”"
-        : "Add to “" + listName + "”";
-      if (onList) addDailyBtn.disabled = true;
-      addDailyBtn.addEventListener("click", () => {
-        addSnsToDaily(sn);
-        const cur = activeList();
-        const curName = cur ? cur.name : listName;
-        addDailyBtn.textContent = "On “" + curName + "”";
-        addDailyBtn.disabled = true;
-        const panel = $("#daily-list");
-        if (panel && !panel.classList.contains("open")) {
-          panel.classList.add("open");
-          $("#daily-toggle").setAttribute("aria-expanded", "true");
-        }
       });
     }
 
@@ -1039,7 +1078,7 @@
       saveDailyStore();
       renderDailyList();
       if (dropped) {
-        setDailyNote(
+        console.info(
           "Removed " +
             dropped +
             " unknown SN" +

@@ -23,7 +23,7 @@ See the project README in the fuller addon package for pipeline details.
 
 ## Named lists
 
-The **Lists** panel supports multiple named structure-number lists (create / rename / delete / switch). Tap an SN to search it (same card + map + twin UI as typing). **Navigate**, paste-add, reorder, and remove still work. An existing single Daily List migrates into a list named **Daily**.
+Tap **Create list** for a popup (Title + Structure number, **+** / **−**, **Save list** / **Delete list**). Saved names show on the main Lists screen; open a list and tap an SN for the usual result card + **Navigate** (twin bias unchanged). **Edit** reopens the popup. Existing Daily / `ilb-daily-lists-v2` data migrates automatically.
 
 ## Twin interstate Navigate bias
 
