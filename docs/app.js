@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v12";
+  const APP_BUILD = "v13";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -520,6 +520,7 @@
     closeListModal();
     renderListsUI();
     ensureListsPanelOpen();
+    openListsPicker();
     const note = $("#lists-save-toast");
     if (note) {
       note.hidden = false;
@@ -578,6 +579,53 @@
     renderListsUI();
   }
 
+
+
+  function closeListsPicker() {
+    const picker = $("#lists-picker");
+    if (!picker) return;
+    picker.hidden = true;
+    lockBodyScroll(false);
+  }
+
+  function renderListsPicker() {
+    const ul = $("#lists-picker-items");
+    const empty = $("#lists-picker-empty");
+    if (!ul || !empty) return;
+    empty.hidden = state.dailyLists.length > 0;
+    ul.innerHTML = state.dailyLists
+      .map((list) => {
+        const n = list.sns.length;
+        return (
+          '<li><button type="button" class="saved-list-btn" data-pick-list="' +
+          escapeHtml(list.id) +
+          '"><span class="saved-list-name">' +
+          escapeHtml(list.name) +
+          '</span><span class="saved-list-meta">' +
+          n +
+          " SN" +
+          (n === 1 ? "" : "s") +
+          "</span></button></li>"
+        );
+      })
+      .join("");
+    ul.querySelectorAll("[data-pick-list]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-pick-list");
+        closeListsPicker();
+        openListDetail(id);
+        ensureListsPanelOpen();
+      });
+    });
+  }
+
+  function openListsPicker() {
+    const picker = $("#lists-picker");
+    if (!picker) return;
+    renderListsPicker();
+    picker.hidden = false;
+    lockBodyScroll(true);
+  }
 
   function ensureListsPanelOpen() {
     const panel = $("#daily-list");
@@ -727,29 +775,23 @@
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
 
     toggle.addEventListener("click", () => {
-      const isOpen = panel.classList.contains("open");
-      if (!isOpen) {
-        state.viewingListId = null;
-        saveDailyStore();
-        ensureListsPanelOpen();
-        renderListsUI();
-        return;
-      }
-      if (state.viewingListId) {
-        backToListsHome();
-        ensureListsPanelOpen();
-        return;
-      }
-      panel.classList.remove("open");
-      toggle.setAttribute("aria-expanded", "false");
-      try {
-        localStorage.setItem(DAILY_OPEN_KEY, "0");
-      } catch (_) {}
+      // Always open the full-screen list picker so titles are selectable on phones.
+      openListsPicker();
     });
 
     if (createBtn) {
       createBtn.addEventListener("click", () => openListModal(null));
     }
+    const pickerCreate = $("#lists-picker-create");
+    if (pickerCreate) {
+      pickerCreate.addEventListener("click", () => {
+        closeListsPicker();
+        openListModal(null);
+      });
+    }
+    document.querySelectorAll("[data-lists-picker-dismiss]").forEach((el) => {
+      el.addEventListener("click", () => closeListsPicker());
+    });
     if (backBtn) {
       backBtn.addEventListener("click", () => backToListsHome());
     }
@@ -1126,7 +1168,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v12")
+        .register("./sw.js?v=v13")
         .then((reg) => {
           try {
             reg.update();

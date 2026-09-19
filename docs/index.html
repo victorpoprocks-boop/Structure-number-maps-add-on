@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="styles.css?v=v12" />
+  <link rel="stylesheet" href="styles.css?v=v13" />
 </head>
 <body>
   <div class="app">
@@ -69,7 +69,7 @@
         <div class="daily-list-head">
           <button type="button" id="daily-toggle" class="daily-toggle" aria-expanded="true" aria-controls="daily-list-body">
             <span id="daily-list-heading">Lists</span>
-            <span id="app-version" class="app-version" title="App build">v12</span>
+            <span id="app-version" class="app-version" title="App build">v13</span>
             <span id="daily-count" class="daily-count" aria-live="polite">0</span>
           </button>
         </div>
@@ -103,6 +103,23 @@
     <main id="map" aria-label="Map"></main>
   </div>
 
+
+  
+  <div id="lists-picker" class="list-modal" hidden>
+    <div class="list-modal-backdrop" data-lists-picker-dismiss></div>
+    <div class="list-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="lists-picker-heading">
+      <header class="list-modal-head">
+        <h2 id="lists-picker-heading">Your lists</h2>
+        <button type="button" id="lists-picker-close" class="ghost-btn list-modal-close" aria-label="Close" data-lists-picker-dismiss>✕</button>
+      </header>
+      <div class="list-modal-body">
+        <button type="button" id="lists-picker-create" class="btn primary list-create-btn">Create list</button>
+        <p class="lists-home-label">Tap a title to open</p>
+        <ul id="lists-picker-items" class="saved-lists" aria-label="Saved lists"></ul>
+        <p id="lists-picker-empty" class="daily-empty">No lists yet — tap <strong>Create list</strong>.</p>
+      </div>
+    </div>
+  </div>
 
   <div id="list-modal" class="list-modal" hidden>
     <div class="list-modal-backdrop" data-list-modal-dismiss></div>
@@ -140,7 +157,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="lib/bridge-search.js?v=v12"></script>
-  <script src="app.js?v=v12"></script>
+  <script src="lib/bridge-search.js?v=v13"></script>
+  <script src="app.js?v=v13"></script>
 </body>
 </html>
