@@ -20,3 +20,8 @@ Load unpacked from `extension/` if present in a fuller release zip, or use the s
 - Rebuild: `python3 scripts/build-data-idot.py` (needs `pyshp`)
 
 See the project README in the fuller addon package for pipeline details.
+
+## Twin interstate Navigate bias
+
+Adjacent barrel SNs (e.g. `075-0107` WB / `075-0108` EB) are detected as twins. The result card links the twin and the map shows both pins. **Navigate** offsets the destination ~60 m along the labeled travel direction so Google Maps is more likely to snap to the correct carriageway.
+

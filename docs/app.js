@@ -9,7 +9,7 @@
     search: null,
     suggestions: [],
     activeIdx: -1,
-    marker: null,
+    markers: null,
     debounce: 0,
     deferredInstall: null,
   };
@@ -20,6 +20,14 @@
     iconSize: [28, 28],
     iconAnchor: [11, 26],
     popupAnchor: [0, -22],
+  });
+
+  const twinPinIcon = L.divIcon({
+    className: "bridge-pin twin",
+    html: "<span></span>",
+    iconSize: [24, 24],
+    iconAnchor: [10, 22],
+    popupAnchor: [0, -18],
   });
 
   const map = L.map("map", {
@@ -96,42 +104,131 @@
     });
   }
 
-  function showOnMap(sn, bridge) {
-    const latlng = [bridge.lat, bridge.lon];
-    if (state.marker) map.removeLayer(state.marker);
-    state.marker = L.marker(latlng, { icon: pinIcon }).addTo(map);
+  function clearMarkers() {
+    if (state.markers) {
+      map.removeLayer(state.markers);
+      state.markers = null;
+    }
+  }
+
+  function popupHtml(sn, bridge, tag) {
     const county = state.search.countyName(bridge.county);
-    state.marker
-      .bindPopup(
-        '<div class="bridge-popup"><div class="title">' +
-          escapeHtml(sn) +
-          "</div><div>" +
-          escapeHtml(bridge.carried || "—") +
-          " over " +
-          escapeHtml(bridge.crossed || "—") +
-          "</div><div>" +
-          escapeHtml(county) +
-          " County</div></div>"
-      )
-      .openPopup();
+    const dir = state.search.parseDirection(bridge.carried);
+    const dirBit = dir
+      ? '<div class="dir">' + escapeHtml(state.search.directionLabel(dir)) + "</div>"
+      : "";
+    return (
+      '<div class="bridge-popup">' +
+      (tag ? '<div class="tag">' + escapeHtml(tag) + "</div>" : "") +
+      '<div class="title">' +
+      escapeHtml(sn) +
+      "</div>" +
+      dirBit +
+      "<div>" +
+      escapeHtml(bridge.carried || "—") +
+      " over " +
+      escapeHtml(bridge.crossed || "—") +
+      "</div><div>" +
+      escapeHtml(county) +
+      " County</div></div>"
+    );
+  }
+
+  function showOnMap(sn, bridge, twin) {
+    clearMarkers();
+    state.markers = L.layerGroup().addTo(map);
+
+    const latlng = [bridge.lat, bridge.lon];
+    const main = L.marker(latlng, { icon: pinIcon, zIndexOffset: 600 }).addTo(
+      state.markers
+    );
+    main.bindPopup(popupHtml(sn, bridge, twin ? "Selected" : null));
+
+    const points = [latlng];
+    if (twin && twin.bridge) {
+      const tll = [twin.bridge.lat, twin.bridge.lon];
+      points.push(tll);
+      const twinMarker = L.marker(tll, {
+        icon: twinPinIcon,
+        zIndexOffset: 400,
+      }).addTo(state.markers);
+      twinMarker.bindPopup(popupHtml(twin.sn, twin.bridge, "Twin"));
+      // Short connector so both barrels read as a pair
+      L.polyline([latlng, tll], {
+        color: "#0b3d91",
+        weight: 2,
+        opacity: 0.35,
+        dashArray: "4 6",
+      }).addTo(state.markers);
+    }
+
+    main.openPopup();
     invalidateMapSoon();
-    map.setView(latlng, Math.max(map.getZoom(), 15), { animate: true });
+    if (points.length > 1) {
+      map.fitBounds(L.latLngBounds(points).pad(0.55), {
+        animate: true,
+        maxZoom: 17,
+      });
+    } else {
+      map.setView(latlng, Math.max(map.getZoom(), 15), { animate: true });
+    }
   }
 
   function renderResult(sn, bridge) {
     const host = $("#result");
     if (!bridge) {
       host.innerHTML = "";
+      clearMarkers();
       return;
     }
     const county = state.search.countyName(bridge.county);
-    const dir = mapsDirUrl(bridge.lat, bridge.lon);
+    const dir = state.search.parseDirection(bridge.carried);
+    const twin = state.search.findTwin(sn);
+    const dest = state.search.navigateDestination(sn, bridge);
+    const dirUrl = mapsDirUrl(dest.lat, dest.lon);
     const focus = mapsSearchUrl(bridge.lat, bridge.lon);
+
+    let dirRow = "";
+    if (dir) {
+      dirRow =
+        '<div class="row"><div class="k">Direction</div><div class="v"><span class="dir-badge">' +
+        escapeHtml(dir) +
+        "</span> " +
+        escapeHtml(state.search.directionLabel(dir)) +
+        "</div></div>";
+    }
+
+    let twinBlock = "";
+    if (twin) {
+      const twinDir = state.search.parseDirection(twin.bridge.carried);
+      const twinLabel =
+        twin.sn +
+        (twin.bridge.carried ? " " + twin.bridge.carried : twinDir ? " " + twinDir : "");
+      twinBlock =
+        '<div class="twin-row">' +
+        '<span class="twin-label">Also:</span> ' +
+        '<button type="button" class="twin-link" data-twin-sn="' +
+        escapeHtml(twin.sn) +
+        '">' +
+        escapeHtml(twinLabel) +
+        "</button></div>";
+    }
+
+    let biasNote = "";
+    if (dest.biased) {
+      biasNote =
+        '<div class="bias-note">Navigate aims ~60 m along ' +
+        escapeHtml(dir || "travel") +
+        " so Maps prefers this barrel.</div>";
+    }
+
     host.innerHTML =
       '<article class="card">' +
       "<h2>" +
       escapeHtml(sn) +
       "</h2>" +
+      dirRow +
+      twinBlock +
       '<div class="row"><div class="k">Carried</div><div class="v">' +
       escapeHtml(bridge.carried || "—") +
       "</div></div>" +
@@ -149,16 +246,30 @@
       bridge.lat +
       ", " +
       bridge.lon +
+      (dest.biased
+        ? '<div class="coord-sub">Navigate → ' + dest.lat + ", " + dest.lon + "</div>"
+        : "") +
       "</div></div>" +
+      biasNote +
       '<div class="actions">' +
       '<a class="btn primary" data-nav href="' +
-      dir +
+      dirUrl +
       '" target="_blank" rel="noopener">Navigate</a>' +
       '<a class="btn secondary" href="' +
       focus +
       '" target="_blank" rel="noopener">Open in Maps</a>' +
       "</div></article>";
-    showOnMap(sn, bridge);
+
+    const twinBtn = host.querySelector("[data-twin-sn]");
+    if (twinBtn) {
+      twinBtn.addEventListener("click", () => {
+        const tsn = twinBtn.getAttribute("data-twin-sn");
+        const hit = state.search.lookupExact(tsn);
+        if (hit) select(hit.sn, hit.bridge);
+      });
+    }
+
+    showOnMap(sn, bridge, twin);
   }
 
   function renderSuggest(items) {
@@ -410,7 +521,13 @@
       $("#footer").innerHTML =
         "<strong>" +
         state.search.count.toLocaleString() +
-        "</strong> Illinois bridges · FHWA NBI " +
+        "</strong> Illinois bridges · " +
+        (state.search.twinPairCount
+          ? "<strong>" +
+            state.search.twinPairCount.toLocaleString() +
+            "</strong> twin pairs · "
+          : "") +
+        "FHWA NBI " +
         (state.search.meta.sourceYear || "") +
         ' · <a href="' +
         (state.search.meta.sourceUrl || "#") +

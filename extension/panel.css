@@ -138,3 +138,23 @@
 #il-bridge-root .ilb-footer {
   margin-top: 8px; font-size: 10px; color: #8090a2; text-align: center;
 }
+
+#il-bridge-root .ilb-twin {
+  margin: 6px 0 8px;
+  padding: 6px 8px;
+  background: #f3f6fb;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+#il-bridge-root .ilb-twin-label { color: #64748b; font-weight: 600; }
+#il-bridge-root .ilb-twin-link {
+  border: 0;
+  background: transparent;
+  color: #0b3d91;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}

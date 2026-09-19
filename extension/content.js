@@ -87,9 +87,36 @@
     const host = root.querySelector("[data-result]");
     if (!bridge) { host.innerHTML = ""; return; }
     const county = STATE.search.countyName(bridge.county);
+    const dir = STATE.search.parseDirection(bridge.carried);
+    const twin = STATE.search.findTwin(sn);
     host.innerHTML = "";
-    const box = el("div", { className: "ilb-result" }, [
+    const children = [
       el("div", { className: "ilb-sn", text: sn }),
+    ];
+    if (dir) {
+      children.push(
+        el("div", { className: "ilb-row" }, [
+          el("div", { className: "k", text: "Direction" }),
+          el("div", { className: "v", text: dir + " · " + STATE.search.directionLabel(dir) }),
+        ])
+      );
+    }
+    if (twin) {
+      const twinLabel =
+        twin.sn + (twin.bridge.carried ? " " + twin.bridge.carried : "");
+      children.push(
+        el("div", { className: "ilb-twin" }, [
+          el("span", { className: "ilb-twin-label", text: "Also: " }),
+          el("button", {
+            type: "button",
+            className: "ilb-twin-link",
+            text: twinLabel,
+            onClick: () => selectBridge(root, twin.sn, twin.bridge),
+          }),
+        ])
+      );
+    }
+    children.push(
       el("div", { className: "ilb-row" }, [
         el("div", { className: "k", text: "Carried" }),
         el("div", { className: "v", text: bridge.carried || "—" }),
@@ -113,20 +140,24 @@
       el("div", { className: "ilb-actions" }, [
         el("button", {
           className: "ilb-btn primary", type: "button", text: "Navigate",
-          onClick: () => navigateTo(bridge),
+          onClick: () => navigateTo(sn, bridge),
         }),
         el("button", {
           className: "ilb-btn secondary", type: "button", text: "Focus map",
           onClick: () => focusMap(bridge),
         }),
-      ]),
-    ]);
+      ])
+    );
+    const box = el("div", { className: "ilb-result" }, children);
     host.appendChild(box);
     STATE.current = { sn, bridge };
   }
 
-  function navigateTo(bridge) {
-    const url = STATE.search.mapsDirectionsUrl(bridge.lat, bridge.lon);
+  function navigateTo(sn, bridge) {
+    const url =
+      (STATE.search.mapsDirectionsForBridge &&
+        STATE.search.mapsDirectionsForBridge(sn, bridge)) ||
+      STATE.search.mapsDirectionsUrl(bridge.lat, bridge.lon);
     window.open(url, "_blank", "noopener");
   }
 
@@ -267,7 +298,11 @@
       STATE.search = window.ILBridgeSearch.createSearchIndex(data);
       root.querySelector("[data-footer]").textContent =
         STATE.search.count.toLocaleString() +
-        " IL bridges · NBI " +
+        " IL bridges · " +
+        (STATE.search.twinPairCount
+          ? STATE.search.twinPairCount.toLocaleString() + " twin pairs · "
+          : "") +
+        "NBI " +
         (STATE.search.meta.sourceYear || "");
       setStatus(root, "Ready — search by structure number.");
       input.focus();
