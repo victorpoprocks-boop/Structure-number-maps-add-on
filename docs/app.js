@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v14";
+  const APP_BUILD = "v15";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -307,6 +307,14 @@
     el.textContent = msg;
   }
 
+  let modalIgnoreUntil = 0;
+  function armModalIgnore(ms) {
+    modalIgnoreUntil = Date.now() + (ms || 450);
+  }
+  function modalClickIsNoise() {
+    return Date.now() < modalIgnoreUntil;
+  }
+
   function lockBodyScroll(lock) {
     document.body.style.overflow = lock ? "hidden" : "";
   }
@@ -373,6 +381,7 @@
     snInput.value = "";
     setModalNote(null);
     renderDraftList();
+    armModalIgnore(500);
     modal.hidden = false;
     lockBodyScroll(true);
     setTimeout(() => titleInput.focus(), 50);
@@ -563,7 +572,9 @@
     if (state.viewingListId === id) state.viewingListId = null;
     saveDailyStore();
     closeListModal();
+    closeListViewer();
     renderListsUI();
+    openListsPicker();
   }
 
   function openListDetail(id) {
@@ -634,6 +645,7 @@
       })
       .join("");
     closeListsPicker();
+    armModalIgnore(500);
     viewer.hidden = false;
     lockBodyScroll(true);
   }
@@ -666,6 +678,7 @@
     if (!picker) return;
     closeListViewer();
     renderListsPicker();
+    armModalIgnore(500);
     picker.hidden = false;
     lockBodyScroll(true);
   }
@@ -817,8 +830,9 @@
     panel.classList.toggle("open", open);
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
 
-    toggle.addEventListener("click", () => {
-      // Always open the full-screen list picker so titles are selectable on phones.
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       openListsPicker();
     });
 
@@ -833,21 +847,24 @@
       });
     }
     document.querySelectorAll("[data-lists-picker-dismiss]").forEach((el) => {
-      el.addEventListener("click", () => closeListsPicker());
+      el.addEventListener("click", (e) => {
+        if (modalClickIsNoise()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        closeListsPicker();
+      });
     });
     const pickerItems = $("#lists-picker-items");
     if (pickerItems && !pickerItems.dataset.bound) {
       pickerItems.dataset.bound = "1";
-      const pick = (e) => {
+      pickerItems.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-pick-list]");
         if (!btn || !pickerItems.contains(btn)) return;
         e.preventDefault();
+        e.stopPropagation();
         openListViewer(btn.getAttribute("data-pick-list"));
-      };
-      pickerItems.addEventListener("click", pick);
-      pickerItems.addEventListener("pointerup", (e) => {
-        if (e.pointerType === "mouse" && e.button !== 0) return;
-        pick(e);
       });
     }
     const viewerItems = $("#list-viewer-items");
@@ -893,7 +910,14 @@
       });
     }
     document.querySelectorAll("[data-list-viewer-dismiss]").forEach((el) => {
-      el.addEventListener("click", () => closeListViewer());
+      el.addEventListener("click", (e) => {
+        if (modalClickIsNoise()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        closeListViewer();
+      });
     });
 
     if (backBtn) {
@@ -908,11 +932,24 @@
 
     if (modal) {
       modal.querySelectorAll("[data-list-modal-dismiss]").forEach((el) => {
-        el.addEventListener("click", () => closeListModal());
+        el.addEventListener("click", (e) => {
+          if (modalClickIsNoise()) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          closeListModal();
+        });
       });
     }
     bindPm(saveBtn, saveDraftList);
-    bindPm(deleteBtn, deleteDraftList);
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteDraftList();
+      });
+    }
     // Use pointerup as primary on mobile; guard against double-firing with click.
     function bindPm(btn, fn) {
       if (!btn) return;
@@ -1272,7 +1309,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v14")
+        .register("./sw.js?v=v15")
         .then((reg) => {
           try {
             reg.update();
