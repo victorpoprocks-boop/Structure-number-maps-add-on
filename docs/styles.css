@@ -774,3 +774,20 @@ body.standalone .install-help { display: none !important; }
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+
+.lists-home-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.saved-list-btn {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  box-shadow: 0 1px 2px rgba(15, 23, 36, 0.04);
+}
+.saved-list-name {
+  font-size: 16px;
+}

@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="styles.css?v=v11" />
+  <link rel="stylesheet" href="styles.css?v=v12" />
 </head>
 <body>
   <div class="app">
@@ -69,13 +69,14 @@
         <div class="daily-list-head">
           <button type="button" id="daily-toggle" class="daily-toggle" aria-expanded="true" aria-controls="daily-list-body">
             <span id="daily-list-heading">Lists</span>
-            <span id="app-version" class="app-version" title="App build">v11</span>
+            <span id="app-version" class="app-version" title="App build">v12</span>
             <span id="daily-count" class="daily-count" aria-live="polite">0</span>
           </button>
         </div>
         <div id="daily-list-body" class="daily-list-body">
           <div id="lists-home" class="lists-home">
             <button type="button" id="list-create-btn" class="btn primary list-create-btn">Create list</button>
+            <p class="lists-home-label">Your lists — tap a title to open</p>
             <div id="lists-save-toast" class="daily-note" hidden></div>
             <ul id="saved-lists" class="saved-lists" aria-label="Saved lists"></ul>
             <p id="lists-empty" class="daily-empty">No lists yet — tap <strong>Create list</strong> to start.</p>
@@ -139,7 +140,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="lib/bridge-search.js?v=v11"></script>
-  <script src="app.js?v=v11"></script>
+  <script src="lib/bridge-search.js?v=v12"></script>
+  <script src="app.js?v=v12"></script>
 </body>
 </html>

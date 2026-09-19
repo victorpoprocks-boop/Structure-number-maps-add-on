@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v11";
+  const APP_BUILD = "v12";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -518,17 +518,8 @@
     state.viewingListId = null;
     saveDailyStore();
     closeListModal();
-    // Ensure Lists panel is open
-    const panel = $("#daily-list");
-    const toggle = $("#daily-toggle");
-    if (panel && !panel.classList.contains("open")) {
-      panel.classList.add("open");
-      if (toggle) toggle.setAttribute("aria-expanded", "true");
-      try {
-        localStorage.setItem(DAILY_OPEN_KEY, "1");
-      } catch (_) {}
-    }
     renderListsUI();
+    ensureListsPanelOpen();
     const note = $("#lists-save-toast");
     if (note) {
       note.hidden = false;
@@ -587,6 +578,21 @@
     renderListsUI();
   }
 
+
+  function ensureListsPanelOpen() {
+    const panel = $("#daily-list");
+    const toggle = $("#daily-toggle");
+    if (!panel) return;
+    panel.classList.add("open");
+    if (toggle) toggle.setAttribute("aria-expanded", "true");
+    try {
+      localStorage.setItem(DAILY_OPEN_KEY, "1");
+    } catch (_) {}
+    try {
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (_) {}
+  }
+
   function renderSavedLists() {
     const ul = $("#saved-lists");
     const empty = $("#lists-empty");
@@ -622,6 +628,7 @@
         openListDetail(btn.getAttribute("data-open-list"));
       });
     });
+    if (state.dailyLists.length) ensureListsPanelOpen();
   }
 
   function renderListDetail() {
@@ -715,18 +722,29 @@
     } catch (_) {
       /* ignore */
     }
+    if (state.dailyLists.length) open = true;
     panel.classList.toggle("open", open);
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
 
     toggle.addEventListener("click", () => {
-      open = !panel.classList.contains("open");
-      panel.classList.toggle("open", open);
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      try {
-        localStorage.setItem(DAILY_OPEN_KEY, open ? "1" : "0");
-      } catch (_) {
-        /* ignore */
+      const isOpen = panel.classList.contains("open");
+      if (!isOpen) {
+        state.viewingListId = null;
+        saveDailyStore();
+        ensureListsPanelOpen();
+        renderListsUI();
+        return;
       }
+      if (state.viewingListId) {
+        backToListsHome();
+        ensureListsPanelOpen();
+        return;
+      }
+      panel.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+      try {
+        localStorage.setItem(DAILY_OPEN_KEY, "0");
+      } catch (_) {}
     });
 
     if (createBtn) {
@@ -1108,7 +1126,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v11")
+        .register("./sw.js?v=v12")
         .then((reg) => {
           try {
             reg.update();
