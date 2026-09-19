@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v13";
+  const APP_BUILD = "v14";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -585,7 +585,57 @@
     const picker = $("#lists-picker");
     if (!picker) return;
     picker.hidden = true;
-    lockBodyScroll(false);
+    if ($("#list-viewer") && $("#list-viewer").hidden) lockBodyScroll(false);
+  }
+
+  function closeListViewer() {
+    const viewer = $("#list-viewer");
+    if (!viewer) return;
+    viewer.hidden = true;
+    if ($("#lists-picker") && $("#lists-picker").hidden) lockBodyScroll(false);
+  }
+
+  function openListViewer(id) {
+    const list = findList(id);
+    const viewer = $("#list-viewer");
+    if (!list || !viewer) return;
+    state.viewingListId = id;
+    saveDailyStore();
+    const heading = $("#list-viewer-heading");
+    const items = $("#list-viewer-items");
+    const empty = $("#list-viewer-empty");
+    if (heading) heading.textContent = list.name;
+    if (!items || !empty) return;
+    empty.hidden = list.sns.length > 0;
+    items.innerHTML = list.sns
+      .map((sn) => {
+        const hit = state.search ? state.search.lookupExact(sn) : null;
+        const bridge = hit ? hit.bridge : null;
+        const label = bridge ? shortLabel(bridge) : "Not in inventory";
+        const navDisabled = bridge ? "" : " disabled";
+        return (
+          '<li><div class="daily-item" data-viewer-sn="' +
+          escapeHtml(sn) +
+          '"><div class="daily-item-sn">' +
+          escapeHtml(sn) +
+          '</div><div class="daily-item-label">' +
+          escapeHtml(label) +
+          '</div><div class="daily-item-actions">' +
+          '<button type="button" class="btn secondary" data-viewer-show="' +
+          escapeHtml(sn) +
+          '">Show</button>' +
+          '<button type="button" class="btn primary" data-viewer-nav="' +
+          escapeHtml(sn) +
+          '"' +
+          navDisabled +
+          ">Navigate</button>" +
+          "</div></div></li>"
+        );
+      })
+      .join("");
+    closeListsPicker();
+    viewer.hidden = false;
+    lockBodyScroll(true);
   }
 
   function renderListsPicker() {
@@ -609,19 +659,12 @@
         );
       })
       .join("");
-    ul.querySelectorAll("[data-pick-list]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-pick-list");
-        closeListsPicker();
-        openListDetail(id);
-        ensureListsPanelOpen();
-      });
-    });
   }
 
   function openListsPicker() {
     const picker = $("#lists-picker");
     if (!picker) return;
+    closeListViewer();
     renderListsPicker();
     picker.hidden = false;
     lockBodyScroll(true);
@@ -792,6 +835,67 @@
     document.querySelectorAll("[data-lists-picker-dismiss]").forEach((el) => {
       el.addEventListener("click", () => closeListsPicker());
     });
+    const pickerItems = $("#lists-picker-items");
+    if (pickerItems && !pickerItems.dataset.bound) {
+      pickerItems.dataset.bound = "1";
+      const pick = (e) => {
+        const btn = e.target.closest("[data-pick-list]");
+        if (!btn || !pickerItems.contains(btn)) return;
+        e.preventDefault();
+        openListViewer(btn.getAttribute("data-pick-list"));
+      };
+      pickerItems.addEventListener("click", pick);
+      pickerItems.addEventListener("pointerup", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        pick(e);
+      });
+    }
+    const viewerItems = $("#list-viewer-items");
+    if (viewerItems && !viewerItems.dataset.bound) {
+      viewerItems.dataset.bound = "1";
+      viewerItems.addEventListener("click", (e) => {
+        const nav = e.target.closest("[data-viewer-nav]");
+        const show = e.target.closest("[data-viewer-show]");
+        const sn = (nav || show) && (nav || show).getAttribute(nav ? "data-viewer-nav" : "data-viewer-show");
+        if (!sn) return;
+        e.preventDefault();
+        const hit = state.search && state.search.lookupExact(sn);
+        if (!hit) {
+          setStatus("“" + sn + "” is not in the inventory.", "error");
+          return;
+        }
+        if (nav) {
+          const dest = state.search.navigateDestination
+            ? state.search.navigateDestination(hit.sn, hit.bridge)
+            : { lat: hit.bridge.lat, lon: hit.bridge.lon };
+          const url = mapsDirUrl(dest.lat, dest.lon);
+          window.open(url, "_blank", "noopener");
+        } else {
+          closeListViewer();
+          select(hit.sn, hit.bridge);
+        }
+      });
+    }
+    const viewerBack = $("#list-viewer-back");
+    if (viewerBack) {
+      viewerBack.addEventListener("click", () => {
+        closeListViewer();
+        openListsPicker();
+      });
+    }
+    const viewerEdit = $("#list-viewer-edit");
+    if (viewerEdit) {
+      viewerEdit.addEventListener("click", () => {
+        const list = viewingList();
+        if (!list) return;
+        closeListViewer();
+        openListModal(list);
+      });
+    }
+    document.querySelectorAll("[data-list-viewer-dismiss]").forEach((el) => {
+      el.addEventListener("click", () => closeListViewer());
+    });
+
     if (backBtn) {
       backBtn.addEventListener("click", () => backToListsHome());
     }
@@ -1168,7 +1272,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v13")
+        .register("./sw.js?v=v14")
         .then((reg) => {
           try {
             reg.update();

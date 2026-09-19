@@ -791,3 +791,49 @@ body.standalone .install-help { display: none !important; }
 .saved-list-name {
   font-size: 16px;
 }
+
+.list-viewer-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#list-viewer .list-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#list-viewer .daily-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 14px;
+  margin: 0 0 8px;
+  cursor: pointer;
+}
+#list-viewer .daily-item-sn {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 800;
+  color: var(--brand);
+  font-size: 15px;
+}
+#list-viewer .daily-item-label {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+#list-viewer .daily-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+#list-viewer .daily-item-actions .btn {
+  flex: 1;
+  min-height: 44px;
+}
