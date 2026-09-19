@@ -356,6 +356,93 @@ body.standalone .install-help { display: none !important; }
 }
 
 /* —— Daily List —— */
+.daily-lists-bar {
+  margin: 0 0 12px;
+}
+.daily-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding: 2px 2px 8px;
+  margin: 0 -2px;
+}
+.daily-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.daily-tab .daily-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daily-tab .daily-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef2f8;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.daily-tab[aria-selected="true"] {
+  background: var(--soft);
+  border-color: #9bb6e0;
+  color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(11, 61, 145, 0.12);
+}
+.daily-tab[aria-selected="true"] .daily-tab-count {
+  background: #fff;
+  color: var(--brand);
+}
+.daily-lists-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.daily-lists-actions .btn.tiny {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.daily-manage-btn {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.daily-manage-btn.danger-text {
+  color: var(--danger);
+  border-color: #f0b4b4;
+}
+.daily-item-text:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.daily-item-hint {
+  display: none;
+}
+
 .daily-list {
   margin-top: 14px;
   border: 1px solid var(--line);

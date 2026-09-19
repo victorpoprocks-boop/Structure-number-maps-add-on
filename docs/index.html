@@ -68,12 +68,20 @@
       <section class="daily-list open" id="daily-list" aria-labelledby="daily-list-heading">
         <div class="daily-list-head">
           <button type="button" id="daily-toggle" class="daily-toggle" aria-expanded="true" aria-controls="daily-list-body">
-            <span id="daily-list-heading">Daily List</span>
+            <span id="daily-list-heading">Lists</span>
             <span id="daily-count" class="daily-count" aria-live="polite">0</span>
           </button>
-          <button type="button" id="daily-clear" class="ghost-btn daily-clear" title="Clear daily list" hidden>Clear</button>
+          <button type="button" id="daily-clear" class="ghost-btn daily-clear" title="Clear active list" hidden>Clear</button>
         </div>
         <div id="daily-list-body" class="daily-list-body">
+          <div class="daily-lists-bar">
+            <div id="daily-tabs" class="daily-tabs" role="tablist" aria-label="Saved lists"></div>
+            <div class="daily-lists-actions">
+              <button type="button" id="daily-new-list" class="btn secondary tiny" title="Create a new named list">+ New</button>
+              <button type="button" id="daily-rename-list" class="ghost-btn daily-manage-btn" title="Rename active list">Rename</button>
+              <button type="button" id="daily-delete-list" class="ghost-btn daily-manage-btn danger-text" title="Delete active list">Delete</button>
+            </div>
+          </div>
           <label class="search-label" for="daily-add">Add structure numbers</label>
           <textarea id="daily-add" rows="2" placeholder="Paste SNs — one per line (e.g. 016-0001)"
             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></textarea>
@@ -81,8 +89,8 @@
             <button type="button" id="daily-add-btn" class="btn secondary daily-add-btn">Add to list</button>
           </div>
           <div id="daily-note" class="daily-note" hidden></div>
-          <ul id="daily-items" class="daily-items" aria-label="Daily structure list"></ul>
-          <p id="daily-empty" class="daily-empty">No structures yet — add from a search result or paste above.</p>
+          <ul id="daily-items" class="daily-items" aria-label="Active list structure numbers"></ul>
+          <p id="daily-empty" class="daily-empty">No structures yet — add from a search result or paste above. Tap an SN to search it.</p>
         </div>
       </section>
 

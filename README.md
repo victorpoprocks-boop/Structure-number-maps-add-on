@@ -21,6 +21,10 @@ Load unpacked from `extension/` if present in a fuller release zip, or use the s
 
 See the project README in the fuller addon package for pipeline details.
 
+## Named lists
+
+The **Lists** panel supports multiple named structure-number lists (create / rename / delete / switch). Tap an SN to search it (same card + map + twin UI as typing). **Navigate**, paste-add, reorder, and remove still work. An existing single Daily List migrates into a list named **Daily**.
+
 ## Twin interstate Navigate bias
 
 Adjacent barrel SNs (e.g. `075-0107` WB / `075-0108` EB) are detected as twins. The result card links the twin and the map shows both pins. **Navigate** offsets the destination ~60 m along the labeled travel direction so Google Maps is more likely to snap to the correct carriageway.
