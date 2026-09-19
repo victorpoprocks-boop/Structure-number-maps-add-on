@@ -837,3 +837,13 @@ body.standalone .install-help { display: none !important; }
   flex: 1;
   min-height: 44px;
 }
+
+@media (max-width: 859px) {
+  /* Phone: Lists lives in the full-screen sheet; don't leave Create list half-clipped. */
+  .daily-list-body { display: none !important; }
+  .daily-list.open .daily-list-head { border-bottom-color: transparent; }
+  .daily-list {
+    margin-top: 10px;
+  }
+  .daily-toggle::before { display: none; }
+}

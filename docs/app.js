@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const APP_BUILD = "v15";
+  const APP_BUILD = "v16";
   const APP_BUILD_KEY = "ilb-app-build";
 
   const $ = (sel) => document.querySelector(sel);
@@ -528,7 +528,6 @@
     saveDailyStore();
     closeListModal();
     renderListsUI();
-    ensureListsPanelOpen();
     openListsPicker();
     const note = $("#lists-save-toast");
     if (note) {
@@ -732,7 +731,6 @@
         openListDetail(btn.getAttribute("data-open-list"));
       });
     });
-    if (state.dailyLists.length) ensureListsPanelOpen();
   }
 
   function renderListDetail() {
@@ -826,7 +824,9 @@
     } catch (_) {
       /* ignore */
     }
-    if (state.dailyLists.length) open = true;
+    // Keep Lists collapsed on load so Create list isn't clipped in the
+    // short phone sidebar; tap Lists for the full-screen sheet.
+    open = false;
     panel.classList.toggle("open", open);
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
 
@@ -1309,7 +1309,7 @@
     if (!("serviceWorker" in navigator)) return;
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("./sw.js?v=v15")
+        .register("./sw.js?v=v16")
         .then((reg) => {
           try {
             reg.update();
