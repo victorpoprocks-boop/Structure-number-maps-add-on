@@ -5,7 +5,7 @@
  */
 "use strict";
 
-const VERSION = "il-bridge-v6";
+const VERSION = "il-bridge-v7";
 const SHELL = VERSION + "-shell";
 const DATA = VERSION + "-data";
 const TILES = VERSION + "-tiles";

@@ -670,6 +670,16 @@ body.standalone .install-help { display: none !important; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.list-modal-draft-box {
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #f4f7fb;
+  padding: 8px;
+  min-height: 72px;
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .list-modal-draft {
   list-style: none;
   margin: 0;
@@ -679,6 +689,10 @@ body.standalone .install-help { display: none !important; }
   gap: 6px;
 }
 .list-modal-draft:empty { display: none; }
+.list-modal-draft-box .daily-empty {
+  margin: 8px 4px;
+  text-align: center;
+}
 .list-modal-draft-item {
   display: flex;
   align-items: center;
@@ -687,7 +701,7 @@ body.standalone .install-help { display: none !important; }
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fafbfd;
+  background: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 700;
   font-size: 14px;

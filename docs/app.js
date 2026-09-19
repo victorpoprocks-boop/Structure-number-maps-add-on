@@ -331,7 +331,18 @@
         const sn = btn.closest("[data-sn]").getAttribute("data-sn");
         state.draft.sns = state.draft.sns.filter((x) => x !== sn);
         setModalNote("Removed " + sn + ".");
+        const snInput = $("#list-modal-sn");
+        if (snInput && (snInput.value || "").trim()) {
+          const raw = snInput.value.trim();
+          let match = raw === sn;
+          if (!match && state.search) {
+            const hit = state.search.lookupExact(raw);
+            if (hit && hit.sn === sn) match = true;
+          }
+          if (match) snInput.value = "";
+        }
         renderDraftList();
+        focusSnEntry();
       });
     });
   }
@@ -373,6 +384,18 @@
     lockBodyScroll(false);
   }
 
+  function focusSnEntry(select) {
+    const snInput = $("#list-modal-sn");
+    if (!snInput) return;
+    // Keep keyboard up on mobile after +/− (button click would steal focus).
+    const run = () => {
+      snInput.focus({ preventScroll: true });
+      if (select) snInput.select();
+    };
+    run();
+    setTimeout(run, 0);
+  }
+
   function draftAddSn() {
     if (!state.draft) return;
     if (!state.search) {
@@ -383,27 +406,26 @@
     const raw = (snInput.value || "").trim();
     if (!raw) {
       setModalNote("Enter a structure number, then tap +.");
-      snInput.focus();
+      focusSnEntry();
       return;
     }
     const hit = state.search.lookupExact(raw);
     if (!hit) {
       setModalNote("“" + raw + "” isn’t in the Illinois inventory.");
-      snInput.focus();
-      snInput.select();
+      focusSnEntry(true);
       return;
     }
     if (state.draft.sns.includes(hit.sn)) {
       setModalNote(hit.sn + " is already on this list.");
       snInput.value = "";
-      snInput.focus();
+      focusSnEntry();
       return;
     }
     state.draft.sns.push(hit.sn);
     snInput.value = "";
     setModalNote("Added " + hit.sn + ".");
     renderDraftList();
-    snInput.focus();
+    focusSnEntry();
   }
 
   function draftRemoveSn() {
@@ -411,8 +433,16 @@
     const snInput = $("#list-modal-sn");
     const raw = (snInput.value || "").trim();
     if (!raw) {
-      setModalNote("Enter a structure number to remove, or tap ✕ on a draft item.");
-      snInput.focus();
+      // Empty entry: remove the last SN in the draft list (quick undo).
+      if (!state.draft.sns.length) {
+        setModalNote("Enter a structure number to remove, or tap ✕ on a draft item.");
+        focusSnEntry();
+        return;
+      }
+      const last = state.draft.sns.pop();
+      setModalNote("Removed " + last + ".");
+      renderDraftList();
+      focusSnEntry();
       return;
     }
     let target = raw;
@@ -426,12 +456,13 @@
     );
     if (state.draft.sns.length === before) {
       setModalNote("“" + raw + "” isn’t on this draft list.");
+      focusSnEntry(true);
       return;
     }
     snInput.value = "";
     setModalNote("Removed " + target + ".");
     renderDraftList();
-    snInput.focus();
+    focusSnEntry();
   }
 
   function saveDraftList() {
@@ -681,6 +712,13 @@
     }
     if (saveBtn) saveBtn.addEventListener("click", () => saveDraftList());
     if (deleteBtn) deleteBtn.addEventListener("click", () => deleteDraftList());
+    // Keep SN entry focused when tapping +/− (avoids keyboard dismiss on mobile).
+    // mousedown preventDefault stops the button from taking focus; do not
+    // preventDefault on touch pointerdown or the click may never fire.
+    [addBtn, removeBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+    });
     if (addBtn) addBtn.addEventListener("click", () => draftAddSn());
     if (removeBtn) removeBtn.addEventListener("click", () => draftRemoveSn());
 

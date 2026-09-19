@@ -126,9 +126,11 @@
           <button type="button" id="list-modal-remove" class="btn secondary list-modal-pm" title="Remove structure number" aria-label="Remove structure number">−</button>
         </div>
         <div id="list-modal-note" class="daily-note" hidden></div>
-        <p class="list-modal-draft-label">Structures in this list</p>
-        <ul id="list-modal-draft" class="list-modal-draft" aria-label="Draft structure numbers"></ul>
-        <p id="list-modal-draft-empty" class="daily-empty">No structure numbers yet — enter an SN and tap +.</p>
+        <p class="list-modal-draft-label" id="list-modal-draft-label">Structures in this list</p>
+        <div class="list-modal-draft-box" role="region" aria-labelledby="list-modal-draft-label">
+          <ul id="list-modal-draft" class="list-modal-draft" aria-label="Draft structure numbers"></ul>
+          <p id="list-modal-draft-empty" class="daily-empty">No structure numbers yet — enter an SN and tap +.</p>
+        </div>
       </div>
       <div class="list-modal-actions">
         <button type="button" id="list-modal-save" class="btn primary">Save list</button>
