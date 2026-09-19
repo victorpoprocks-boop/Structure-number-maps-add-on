@@ -396,12 +396,24 @@
     setTimeout(run, 0);
   }
 
+  function normalizeDraftSn(raw) {
+    const s = String(raw || "").trim().toUpperCase();
+    if (!s) return "";
+    // Prefer inventory canonical form when known.
+    if (state.search) {
+      const hit = state.search.lookupExact(s);
+      if (hit && hit.sn) return hit.sn;
+    }
+    // Digits-only → CCC-NNNN when possible (0160001 → 016-0001).
+    const dig = s.replace(/\D/g, "");
+    if (/^\d{7,}$/.test(dig)) {
+      return dig.slice(0, 3) + "-" + dig.slice(3, 7);
+    }
+    return s;
+  }
+
   function draftAddSn() {
     if (!state.draft) return;
-    if (!state.search) {
-      setModalNote("Inventory still loading — try again in a moment.");
-      return;
-    }
     const snInput = $("#list-modal-sn");
     const raw = (snInput.value || "").trim();
     if (!raw) {
@@ -409,21 +421,21 @@
       focusSnEntry();
       return;
     }
-    const hit = state.search.lookupExact(raw);
-    if (!hit) {
-      setModalNote("“" + raw + "” isn’t in the Illinois inventory.");
-      focusSnEntry(true);
-      return;
-    }
-    if (state.draft.sns.includes(hit.sn)) {
-      setModalNote(hit.sn + " is already on this list.");
+    const sn = normalizeDraftSn(raw);
+    const known = !!(state.search && state.search.lookupExact(raw));
+    if (state.draft.sns.includes(sn)) {
+      setModalNote(sn + " is already on this list.");
       snInput.value = "";
       focusSnEntry();
       return;
     }
-    state.draft.sns.push(hit.sn);
+    state.draft.sns.push(sn);
     snInput.value = "";
-    setModalNote("Added " + hit.sn + ".");
+    setModalNote(
+      known
+        ? "Added " + sn + "."
+        : "Added " + sn + " (not in inventory — Navigate may be limited)."
+    );
     renderDraftList();
     focusSnEntry();
   }
